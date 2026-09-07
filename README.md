@@ -67,10 +67,26 @@ Donnees de demonstration : `npm run seed` (3 salons, ~40 messages).
 
 ## Etat de la couche temps reel
 
-Stub volontairement naif (`src/realtime/naive-stub.ts`) : un seul WebSocket global, tous les
-salons melanges, pas de presence ni d'indicateur de saisie, pas de signaling WebRTC, messages
-perdus a la reconnexion. `TRANSPOSITION.md` liste ce qui est a corriger. Le cas d'ordre et de
-deduplication : `npm run scenario`.
+Le canal passe par `src/realtime/ws-server.ts` (etape 3) : JWT obligatoire au handshake,
+`Origin` en liste blanche, rate-limiting a 15 messages/s par connexion, keepalive ping/pong,
+et diffusion evenementielle. `naive-stub.ts` n'est plus demarre ; il reste dans le depot
+comme point de comparaison.
+
+Restent a corriger : pas de room par salon (etape 4), pas de presence ni d'indicateur de
+saisie (etape 5), pas de deduplication a la reconnexion (etape 6), pas de signaling WebRTC
+(etape 8). `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication :
+`npm run scenario`.
+
+Se connecter demande donc un jeton :
+
+```bash
+TOKEN=$(curl -s "http://localhost:3000/api/dev-token?pseudo=alice" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
+wscat -c "ws://localhost:3000?token=$TOKEN"
+wscat -c ws://localhost:3000        # refuse : 401
+```
+
+`GET /api/dev-token` delivre un JWT **sans authentifier personne** : c'est une commodite de
+TP, pas un mecanisme de connexion.
 
 ## Structure
 

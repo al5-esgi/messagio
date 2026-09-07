@@ -92,16 +92,38 @@
       }
 
       let state = {};
-      const ws = new WebSocket(`ws://${location.host}`);
-      ws.onopen = () => (status.textContent = "connecte " + me);
-      ws.onclose = () => (status.textContent = "deconnecte");
-      ws.onmessage = (e) => {
+      let ws = null;
+
+      // Etape 3 : le serveur exige un JWT AU HANDSHAKE. On le recupere d'abord, puis on
+      // le presente en sous-protocole `jwt` plutot qu'en `?token=` : l'URL d'une WebSocket
+      // finit dans les journaux d'acces, pas les en-tetes.
+      fetch("/api/dev-token?pseudo=" + encodeURIComponent(me))
+        .then((r) => r.json())
+        .then(({ token }) => connecter(token))
+        .catch(() => (status.textContent = "jeton indisponible"));
+
+      function connecter(token) {
+        ws = new WebSocket(`ws://${location.host}`, ["jwt", token]);
+        ws.onopen = () => (status.textContent = "connecte " + me);
+        ws.onclose = (e) => {
+          status.textContent =
+            e.code === 1008
+              ? "ferme : " + (e.reason || "regle enfreinte") + " (code 1008)"
+              : "deconnecte (code " + e.code + ")";
+        };
+        ws.onerror = () =>
+          (status.textContent =
+            "handshake refuse - code exact dans DevTools > Network > WS");
+        ws.onmessage = onMessage;
+      }
+
+      function onMessage(e) {
         const msg = JSON.parse(e.data);
         if (msg.type === "state") {
           state = msg.state;
           render();
         }
-      };
+      }
 
       function render() {
         const msgs = state[sel] ?? [];
@@ -117,12 +139,12 @@
       document.getElementById("f").addEventListener("submit", (e) => {
         e.preventDefault();
         const t = document.getElementById("t");
-        if (!t.value) return;
+        if (!t.value || !ws || ws.readyState !== WebSocket.OPEN) return;
         ws.send(
           JSON.stringify({
             kind: "message",
             salonId: sel,
-            auteur: me,
+            auteur: me, // ignore par le serveur : l'auteur vient du JWT (etape 3)
             texte: t.value,
           }),
         );

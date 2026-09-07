@@ -73,3 +73,20 @@ export function applyNaive(store: Store, msg: ClientMessage): void {
   // aucune verification d'appartenance au salon (defaut du stub, corrige etape 4)
   if (salon) posterEtNotifier(store, salon, msg.auteur, msg.texte);
 }
+
+/**
+ * Variante de `applyNaive` pour le serveur ws securise (etape 3) : l'auteur est
+ * l'identite du JWT verifie au handshake, et non le champ `auteur` du message.
+ * Un client ne peut donc plus poster sous le pseudo de quelqu'un d'autre.
+ *
+ * L'appartenance au salon n'est toujours pas verifiee : c'est le travail de l'etape 4.
+ */
+export function appliquerMessage(
+  store: Store,
+  msg: ClientMessage,
+  membre: string,
+): void {
+  if (msg.kind !== "message" || !msg.texte) return; // "typing" : etape 5
+  const salon = store.salons.get(msg.salonId);
+  if (salon) posterEtNotifier(store, salon, membre, msg.texte);
+}

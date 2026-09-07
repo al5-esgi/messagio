@@ -2,6 +2,8 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { messagesDepuis } from "./domain.ts";
 import { posterEtNotifier, type Store } from "./store.ts";
 import type { NotificationNumerotee } from "./realtime/sse-notifications.ts";
+import jwt from "jsonwebtoken";
+import { SECRET } from "./realtime/security-helpers.ts";
 
 /** Intervalle des commentaires de maintien de connexion (proxies, timeouts). */
 const BATTEMENT_MS = 15_000;
@@ -37,6 +39,17 @@ export function registerRoutes(app: FastifyInstance, store: Store): void {
     return reply
       .code(201)
       .send(posterEtNotifier(store, salon, body.auteur, body.texte));
+  });
+
+  // --- Jeton de developpement (etape 3) ---------------------------------------
+  // ATTENTION : cette route delivre un JWT a QUICONQUE le demande, sans authentifier
+  // personne. Elle existe pour que le front de demonstration et `wscat` puissent
+  // ouvrir une WebSocket pendant le TP. Dans une vraie application, le jeton est
+  // emis par la connexion (mot de passe, OAuth...), jamais par un endpoint ouvert.
+  app.get("/api/dev-token", async (req) => {
+    const pseudo = (req.query as { pseudo?: string }).pseudo?.trim();
+    const sub = pseudo && pseudo.length <= 32 ? pseudo : "anonyme";
+    return { token: jwt.sign({ sub }, SECRET, { expiresIn: "4h" }), sub };
   });
 
   // --- Canal SSE (etape 2) : flux lecture seule des notifications de salon. ---
