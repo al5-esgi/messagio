@@ -20,6 +20,7 @@ export function registerRoutes(app: FastifyInstance, store: Store): void {
       id: s.id,
       nom: s.nom,
       dernierSeq: s.dernierSeq,
+      prive: s.membres.length > 0,
     })),
   );
 

@@ -18,12 +18,19 @@ export interface Salon {
   nom: string;
   messages: Message[];
   dernierSeq: number;
+  /** Pseudos autorises. Vide = salon ouvert a tous (etape 4). */
+  membres: string[];
 }
 
 const MAX_HISTORIQUE = 200;
 
-export function creerSalon(id: string, nom: string): Salon {
-  return { id, nom, messages: [], dernierSeq: 0 };
+export function creerSalon(id: string, nom: string, membres: string[] = []): Salon {
+  return { id, nom, messages: [], dernierSeq: 0, membres };
+}
+
+/** Un salon sans liste de membres est ouvert ; sinon il faut y figurer. */
+export function peutRejoindre(salon: Salon, membre: string): boolean {
+  return salon.membres.length === 0 || salon.membres.includes(membre);
 }
 
 export function poster(salon: Salon, auteur: string, texte: string): Message {

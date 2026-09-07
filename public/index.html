@@ -45,16 +45,19 @@
         font: inherit;
         padding: 4px;
       }
+      .msg.systeme { color: #888; font-style: italic; }
+      .msg.refuse { color: #c00; font-weight: 600; }
+      .aide code { background: #eee; padding: 1px 4px; border-radius: 3px; }
     </style>
   </head>
   <body>
     <h1>Chat <span id="status" class="hint">deconnecte</span></h1>
     <div id="salons"></div>
-    <p class="hint">
-      Ouvrez 2 onglets. Choisissez des salons differents : vous voyez quand meme
-      les messages de l'autre salon (le stub n'a pas de room). Pas d'indicateur
-      de saisie, pas de liste de presents. Rechargez : les messages recus
-      pendant l'absence sont perdus.
+    <p class="aide">
+      Ouvrez 2 onglets sur des salons differents : les messages ne se melangent plus
+      (une room <code>salon:&lt;id&gt;</code> par salon). Identifiez-vous avec
+      <code>?membre=alice</code> dans l'URL. Le salon <strong>Dev</strong> est prive :
+      reserve a alice et bob.
     </p>
     <div id="fil"></div>
     <form id="f">
@@ -63,74 +66,106 @@
       </button>
     </form>
 
+    <script src="/socket.io/socket.io.js"></script>
     <script>
-      const me = "u" + Math.floor(Math.random() * 1000);
-      let sel = "general";
+      // Etape 4 : Socket.IO. Une room par salon, un ack sur chaque action.
+      const params = new URLSearchParams(location.search);
+      const me = params.get("membre") || "u" + Math.floor(Math.random() * 1000);
+      let sel = params.get("salon") || "general";
       const status = document.getElementById("status");
       const fil = document.getElementById("fil");
+      let socket = null;
+
+      const info = (t) => (status.textContent = t);
+
+      fetch("/api/dev-token?pseudo=" + encodeURIComponent(me))
+        .then((r) => r.json())
+        .then(({ token }) => demarrer(token))
+        .catch(() => info("jeton indisponible"));
+
+      function demarrer(token) {
+        // Le jeton passe par `auth`, pas par l'URL : il ne finit pas dans les journaux.
+        socket = io({ auth: { token } });
+
+        socket.on("connect", () => {
+          info("connecte " + me);
+          rejoindre(sel);
+        });
+
+        socket.on("connect_error", (e) =>
+          info("connexion refusee : " + e.message),
+        );
+        socket.on("disconnect", (r) => info("deconnecte (" + r + ")"));
+
+        // Reconnexion automatique : Socket.IO la gere, il faut seulement
+        // REJOINDRE a nouveau la room - une room ne survit pas a la session.
+        socket.io.on("reconnect", (n) => {
+          info("reconnecte (tentative " + n + ") - on rejoint " + sel);
+          rejoindre(sel);
+        });
+        socket.io.on("reconnect_attempt", (n) => info("reconnexion... " + n));
+
+        socket.on("message", (msg) => {
+          if (msg.salonId !== sel) return;
+          messages.push(msg);
+          render();
+        });
+
+        socket.on("membre-rejoint", ({ membre }) => ligneSysteme(membre + " a rejoint"));
+        socket.on("membre-parti", ({ membre }) => ligneSysteme(membre + " est parti"));
+      }
+
+      let messages = [];
+
+      function rejoindre(salonId) {
+        // L'ack porte la decision d'autorisation.
+        socket.emit("join", "salon:" + salonId, (res) => {
+          if (!res.ok) {
+            info("join " + salonId + " REFUSE : " + res.raison);
+            fil.innerHTML =
+              '<div class="msg refuse">acces refuse : ' + res.raison + "</div>";
+            return;
+          }
+          sel = salonId;
+          messages = res.messages;
+          info("connecte " + me + " - salon " + sel);
+          mark();
+          render();
+        });
+      }
+
+      function ligneSysteme(texte) {
+        messages.push({ systeme: true, texte });
+        render();
+      }
 
       fetch("/api/salons")
         .then((r) => r.json())
         .then((list) => {
           document.getElementById("salons").innerHTML = list
-            .map((s) => `<button data-s="${s.id}">${s.nom}</button>`)
+            .map(
+              (s) =>
+                `<button data-s="${s.id}">${s.nom}${s.prive ? " (prive)" : ""}</button>`,
+            )
             .join("");
           document.querySelectorAll("#salons button").forEach((b) => {
-            b.onclick = () => {
-              sel = b.dataset.s;
-              render();
-              mark();
-            };
+            b.onclick = () => rejoindre(b.dataset.s);
           });
           mark();
-          render();
         });
+
       function mark() {
         document
           .querySelectorAll("#salons button")
           .forEach((b) => b.classList.toggle("sel", b.dataset.s === sel));
       }
 
-      let state = {};
-      let ws = null;
-
-      // Etape 3 : le serveur exige un JWT AU HANDSHAKE. On le recupere d'abord, puis on
-      // le presente en sous-protocole `jwt` plutot qu'en `?token=` : l'URL d'une WebSocket
-      // finit dans les journaux d'acces, pas les en-tetes.
-      fetch("/api/dev-token?pseudo=" + encodeURIComponent(me))
-        .then((r) => r.json())
-        .then(({ token }) => connecter(token))
-        .catch(() => (status.textContent = "jeton indisponible"));
-
-      function connecter(token) {
-        ws = new WebSocket(`ws://${location.host}`, ["jwt", token]);
-        ws.onopen = () => (status.textContent = "connecte " + me);
-        ws.onclose = (e) => {
-          status.textContent =
-            e.code === 1008
-              ? "ferme : " + (e.reason || "regle enfreinte") + " (code 1008)"
-              : "deconnecte (code " + e.code + ")";
-        };
-        ws.onerror = () =>
-          (status.textContent =
-            "handshake refuse - code exact dans DevTools > Network > WS");
-        ws.onmessage = onMessage;
-      }
-
-      function onMessage(e) {
-        const msg = JSON.parse(e.data);
-        if (msg.type === "state") {
-          state = msg.state;
-          render();
-        }
-      }
-
       function render() {
-        const msgs = state[sel] ?? [];
-        fil.innerHTML = msgs
-          .map(
-            (m) =>
-              `<div class="msg"><span class="auteur">${m.auteur}</span> ${m.texte}</div>`,
+        fil.innerHTML = messages
+          .map((m) =>
+            m.systeme
+              ? `<div class="msg systeme">${m.texte}</div>`
+              : `<div class="msg"><span class="auteur">${m.auteur}</span> ${m.texte}</div>`,
           )
           .join("");
         fil.scrollTop = fil.scrollHeight;
@@ -139,16 +174,14 @@
       document.getElementById("f").addEventListener("submit", (e) => {
         e.preventDefault();
         const t = document.getElementById("t");
-        if (!t.value || !ws || ws.readyState !== WebSocket.OPEN) return;
-        ws.send(
-          JSON.stringify({
-            kind: "message",
-            salonId: sel,
-            auteur: me, // ignore par le serveur : l'auteur vient du JWT (etape 3)
-            texte: t.value,
-          }),
-        );
+        if (!t.value || !socket) return;
+        const texte = t.value;
         t.value = "";
+        // Ack sur l'evenement metier : le serveur renvoie le seq qu'il a attribue.
+        socket.emit("message", { salonId: sel, texte }, (res) => {
+          if (!res.ok) info("message refuse : " + res.raison);
+          else console.log("message confirme, seq =", res.seq);
+        });
       });
     </script>
   </body>

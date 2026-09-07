@@ -67,26 +67,19 @@ Donnees de demonstration : `npm run seed` (3 salons, ~40 messages).
 
 ## Etat de la couche temps reel
 
-Le canal passe par `src/realtime/ws-server.ts` (etape 3) : JWT obligatoire au handshake,
-`Origin` en liste blanche, rate-limiting a 15 messages/s par connexion, keepalive ping/pong,
-et diffusion evenementielle. `naive-stub.ts` n'est plus demarre ; il reste dans le depot
-comme point de comparaison.
+Le canal passe par `src/realtime/socketio-server.ts` (etape 4) : JWT au handshake, **une room
+`salon:<id>` par salon**, autorisation portee par l'ack du `join`, ack avec numero de sequence
+sur l'evenement metier, rate-limiting a 15 messages/s. `ws-server.ts` (etape 3) et
+`naive-stub.ts` restent dans le depot comme points de comparaison.
 
-Restent a corriger : pas de room par salon (etape 4), pas de presence ni d'indicateur de
-saisie (etape 5), pas de deduplication a la reconnexion (etape 6), pas de signaling WebRTC
-(etape 8). `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication :
-`npm run scenario`.
+Le salon `dev` est **prive** (alice, bob) : il sert a demontrer le refus d'autorisation.
+Le front accepte `?membre=<pseudo>` et `?salon=<id>` pour ouvrir deux onglets distincts.
 
-Se connecter demande donc un jeton :
+Restent a corriger : pas de presence ni d'indicateur de saisie (etape 5), pas de deduplication
+a la reconnexion (etape 6), instance unique (etape 7), pas de signaling WebRTC (etape 8).
+`TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication : `npm run scenario`.
 
-```bash
-TOKEN=$(curl -s "http://localhost:3000/api/dev-token?pseudo=alice" | python3 -c "import sys,json;print(json.load(sys.stdin)['token'])")
-wscat -c "ws://localhost:3000?token=$TOKEN"
-wscat -c ws://localhost:3000        # refuse : 401
-```
-
-`GET /api/dev-token` delivre un JWT **sans authentifier personne** : c'est une commodite de
-TP, pas un mecanisme de connexion.
+Le canal SSE de l'etape 2 (`GET /api/stream`) reste disponible pour un client en lecture seule.
 
 ## Structure
 

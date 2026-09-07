@@ -1,7 +1,8 @@
 # ADR-1 : technique de push
 
 ## Statut
-Propose (etape 2) — a accepter a l'etape 4, une fois les rooms Socket.IO en place.
+**Accepte** (etape 4). Propose a l'etape 2, confirme apres avoir pratique SSE (S2),
+`ws` nu (S3) et Socket.IO (S4).
 
 ## Contexte
 Le produit est un chat multi-salons auquel s'ajoutera, en fin de parcours, un appel audio/video
@@ -58,16 +59,32 @@ flux A/V, ou l'absence de relais serveur est justement l'objectif recherche (lat
 *A confirmer a l'etape 8, une fois le signaling `offer`/`answer`/`ice` pratique.*
 
 ## Consequences
-**Ce que ce choix permet.** Un seul transport bidirectionnel pour messages, presence et saisie,
-cloisonne par salon des l'etape 4. Un chemin de montee en charge connu (adaptateur Redis) sans
-changer le code applicatif. Un canal SSE utilisable immediatement par un client en lecture seule,
-sans dependance ni bibliotheque cliente.
 
-**Ce que ce choix ne permet pas — et ce qu'il coute.** Socket.IO n'est pas un WebSocket standard :
-un client tiers ne peut pas s'y connecter avec un simple `new WebSocket(...)`, ce qui est accepte
-puisque le seul client prevu est le front du projet. Deux canaux coexistent jusqu'a la seance 3
-(SSE + stub), donc deux chemins de diffusion a garder coherents : c'est le prix de la transition,
-et le `posterEtNotifier` de `src/store.ts` est le point de passage unique qui l'assure. Enfin le
-buffer SSE est **borne a 100 evenements** : un client absent trop longtemps recoit
-`resync-needed` et doit repartir d'un instantane REST — une perte assumee, preferable a un
-historique non borne en memoire ou a un rejeu silencieusement incomplet.
+*Section revue a l'etape 4, apres pratique des trois techniques.*
+
+**Le choix est confirme.** Rien de ce qui a ete implemente n'a remis en cause la decision, et
+deux points l'ont renforcee. D'abord les **rooms** : `io.to("salon:dev").emit(...)` a supprime en
+une ligne le defaut central du constat initial — les 2917 octets de tous les salons diffuses
+toutes les 500 ms. Un client de `general` ne recoit plus rien de `dev`, verifie. Ensuite les
+**acks** : porter la decision d'autorisation par l'ack du `join`, plutot que par un evenement
+d'erreur separe, evite d'inventer un protocole de correlation requete/reponse. L'ack du
+`message` renvoie le `seq` attribue par le serveur, ce qui prepare directement l'etape 6.
+
+**Un ajustement.** L'etape 3 avait deja donne l'authentification au handshake ; l'etape 4 a
+montre que cela ne suffit pas. Un membre authentifie et autorise sur `general` pouvait encore
+ecrire dans `dev` en annoncant simplement `salonId: "dev"`. L'autorisation doit donc etre
+verifiee **deux fois** : a l'entree dans la room, et a chaque ecriture (`socket.rooms.has(room)`).
+C'est la lecon la moins intuitive de la seance, et elle ne tient pas au transport choisi.
+
+**Ce que SSE apporte encore.** Le canal `GET /api/stream` de l'etape 2 est conserve : il sert un
+client passif sans dependance ni bibliotheque. Son mecanisme de rattrapage (buffer borne, rejeu
+par identifiant, `resync-needed`) est le modele de ce que l'etape 6 rejouera sur Socket.IO avec
+le `seq` par salon. L'implementer n'aura donc pas ete un detour.
+
+**Ce que ce choix ne permet toujours pas — et ce qu'il coute.** Socket.IO n'est pas un WebSocket
+standard : un client tiers ne peut pas s'y connecter avec `new WebSocket(...)`, ce qui reste
+accepte puisque le seul client prevu est le front du projet. Le protocole ajoute son propre
+encodage et son heartbeat, donc un surcout par message que ne justifierait pas un flux
+purement descendant. Enfin **une room ne survit pas a une reconnexion** : Socket.IO retablit la
+connexion tout seul, mais le client doit re-emettre son `join` — verifie a l'etape 4, et c'est
+exactement la que se logera la deduplication de l'etape 6.

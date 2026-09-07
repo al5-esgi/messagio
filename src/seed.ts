@@ -9,7 +9,8 @@ export const MEMBRES: Membre[] = [
 export function buildSeed(): Map<string, Salon> {
   const salons = new Map<string, Salon>();
   const general = creerSalon("general", "General");
-  const dev = creerSalon("dev", "Dev");
+  // Salon prive : sert a demontrer le refus de `join` a l'etape 4.
+  const dev = creerSalon("dev", "Dev", ["alice", "bob"]);
   const random = creerSalon("random", "Random");
 
   const conv: Array<[Salon, string, string]> = [
@@ -32,7 +33,8 @@ export function buildSeed(): Map<string, Salon> {
 if (process.argv.includes("--print")) {
   for (const s of buildSeed().values()) {
     console.log(
-      `# ${s.nom} (${s.id}) - ${s.messages.length} messages, dernier seq ${s.dernierSeq}`,
+      `# ${s.nom} (${s.id}) - ${s.messages.length} messages, dernier seq ${s.dernierSeq}` +
+        (s.membres.length ? ` - prive : ${s.membres.join(", ")}` : " - ouvert"),
     );
   }
 }
