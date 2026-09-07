@@ -48,6 +48,26 @@
       .msg.systeme { color: #888; font-style: italic; }
       .msg.refuse { color: #c00; font-weight: 600; }
       .aide code { background: #eee; padding: 1px 4px; border-radius: 3px; }
+      #presence {
+        margin: 6px 0;
+        font-size: 13px;
+        color: #444;
+        min-height: 18px;
+      }
+      #presence .qui {
+        display: inline-block;
+        background: #eef;
+        border-radius: 10px;
+        padding: 1px 8px;
+        margin-right: 4px;
+      }
+      #presence .qui.ecrit { background: #ffeaa7; }
+      #saisie {
+        min-height: 18px;
+        font-size: 12px;
+        color: #888;
+        font-style: italic;
+      }
     </style>
   </head>
   <body>
@@ -59,7 +79,9 @@
       <code>?membre=alice</code> dans l'URL. Le salon <strong>Dev</strong> est prive :
       reserve a alice et bob.
     </p>
+    <div id="presence"></div>
     <div id="fil"></div>
+    <div id="saisie"></div>
     <form id="f">
       <input id="t" placeholder="message..." autocomplete="off" /><button>
         Envoyer
@@ -111,11 +133,56 @@
           render();
         });
 
-        socket.on("membre-rejoint", ({ membre }) => ligneSysteme(membre + " a rejoint"));
-        socket.on("membre-parti", ({ membre }) => ligneSysteme(membre + " est parti"));
+        socket.on("presence-joined", ({ membre }) => {
+          if (!presents.some((p) => p.membre === membre))
+            presents.push({ membre, saisit: false });
+          ligneSysteme(membre + " a rejoint");
+          renderPresence();
+        });
+
+        // N'arrive qu'apres le delai de grace : un rechargement de page n'en produit pas.
+        socket.on("presence-left", ({ membre }) => {
+          presents = presents.filter((p) => p.membre !== membre);
+          ecrivent.delete(membre);
+          ligneSysteme(membre + " est parti");
+          renderPresence();
+        });
+
+        socket.on("typing", ({ membre }) => marquerEcrit(membre));
       }
 
       let messages = [];
+      let presents = [];              // [{ membre, saisit }]
+      const ecrivent = new Map();     // membre -> minuteur d'expiration du "X ecrit"
+
+      function renderPresence() {
+        document.getElementById("presence").innerHTML = presents.length
+          ? presents
+              .map(
+                (p) =>
+                  `<span class="qui${ecrivent.has(p.membre) ? " ecrit" : ""}">${p.membre}</span>`,
+              )
+              .join("")
+          : '<span style="color:#999">personne d\'autre ici</span>';
+
+        const noms = [...ecrivent.keys()].filter((m) => m !== me);
+        document.getElementById("saisie").textContent = noms.length
+          ? noms.join(", ") + (noms.length > 1 ? " ecrivent..." : " ecrit...")
+          : "";
+      }
+
+      // Le signal est ephemere : s'il cesse d'etre reemis, il expire tout seul.
+      function marquerEcrit(membre) {
+        clearTimeout(ecrivent.get(membre));
+        ecrivent.set(
+          membre,
+          setTimeout(() => {
+            ecrivent.delete(membre);
+            renderPresence();
+          }, 4000),
+        );
+        renderPresence();
+      }
 
       function rejoindre(salonId) {
         // L'ack porte la decision d'autorisation.
@@ -124,13 +191,21 @@
             info("join " + salonId + " REFUSE : " + res.raison);
             fil.innerHTML =
               '<div class="msg refuse">acces refuse : ' + res.raison + "</div>";
+            presents = [];
+            ecrivent.clear();
+            renderPresence();
             return;
           }
           sel = salonId;
           messages = res.messages;
+          // Snapshot : on connait l'etat courant sans attendre que quelqu'un bouge.
+          presents = res.presents || [];
+          ecrivent.clear();
+          for (const p of presents) if (p.saisit) marquerEcrit(p.membre);
           info("connecte " + me + " - salon " + sel);
           mark();
           render();
+          renderPresence();
         });
       }
 
@@ -170,6 +245,16 @@
           .join("");
         fil.scrollTop = fil.scrollHeight;
       }
+
+      // Emission throttlee : au plus un `typing` par seconde, meme en tapant vite.
+      // Sans cela on saturerait le rate-limit de 15 messages/s a la premiere phrase.
+      let dernierTyping = 0;
+      document.getElementById("t").addEventListener("input", () => {
+        const t = Date.now();
+        if (!socket || t - dernierTyping < 1000) return;
+        dernierTyping = t;
+        socket.emit("typing");
+      });
 
       document.getElementById("f").addEventListener("submit", (e) => {
         e.preventDefault();

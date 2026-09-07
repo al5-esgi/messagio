@@ -17,6 +17,29 @@ vous en remplacez une tranche par la technique vue sur le kit de reference.
 Les ADR correspondants : `docs/adr/0001` (etape 2, acceptee etape 4), `docs/adr/0002` (etape 6), `docs/adr/0003`
 (etape 7, acceptee etape 8).
 
+## Avancement
+
+| Etape | Statut | Ou |
+|---|---|---|
+| 1 - constat | fait | « Constat initial » ci-dessous |
+| 2 - SSE + buffer borne + `Last-Event-ID` | fait | `src/realtime/sse-notifications.ts`, `GET /api/stream` |
+| 3 - serveur `ws` + JWT + Origin + rate-limit | fait | `src/realtime/ws-server.ts` |
+| 4 - Socket.IO + rooms `salon:<id>` + ack | fait | `src/realtime/socketio-server.ts` |
+| 5 - presence + `typing` + snapshot | fait | `src/realtime/presence.ts` |
+| 6 - deduplication a la reconnexion | a faire | `src/realtime/convergence.exemple.ts` a brancher |
+| 7 - adaptateur Redis + presence distribuee | a faire | |
+| 8 - signaling WebRTC + visio | a faire | |
+
+Tranches du stub desormais remplacees : la diffusion « push tout a tout le monde » (rooms,
+etape 4), l'absence de securite au handshake (etape 3), l'absence de presence et de signal
+ephemere (etape 5), et le « rechargement total » a la connexion (snapshot dans l'ack du `join`).
+`naive-stub.ts` et `ws-server.ts` restent dans le depot comme points de comparaison ; seul
+`socketio-server.ts` est demarre.
+
+Restent les defauts d'ordre et de convergence : un message renvoye apres une coupure peut
+encore produire un doublon (etape 6), et la presence ne survit pas a une seconde instance
+(etape 7).
+
 ## Code fourni pour vous aider
 
 - `src/realtime/security-helpers.ts` : verification JWT + `Origin` + `RateLimiter` (etape 3), a brancher.

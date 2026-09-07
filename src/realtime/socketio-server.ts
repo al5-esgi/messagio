@@ -3,6 +3,7 @@ import type { Server as HttpServer } from "node:http";
 import { verifyJwtPayload, RateLimiter, SECRET } from "./security-helpers.ts";
 import { messagesDepuis, peutRejoindre } from "../domain.ts";
 import { posterEtNotifier, type Store } from "../store.ts";
+import { Presences, type PresenceVue } from "./presence.ts";
 
 // ============================================================================
 //  Serveur Socket.IO - remplace ws-server.ts (TRANSPOSITION.md, etape 4).
@@ -16,8 +17,9 @@ import { posterEtNotifier, type Store } from "../store.ts";
 //   - la reconnexion automatique avec backoff ;
 //   - le heartbeat (pingInterval / pingTimeout), qui remplace notre ping/pong.
 //
+//  Etape 5 : presence par salon, signal ephemere `typing`, snapshot dans l'ack du join.
+//
 //  Ce qui reste a faire :
-//   - presence et indicateur de saisie                                  (etape 5)
 //   - deduplication a la reconnexion                                     (etape 6)
 //   - plusieurs instances                                                (etape 7)
 //   - signaling WebRTC                                                   (etape 8)
@@ -51,6 +53,8 @@ export interface ResultatJoin {
   raison?: string;
   /** Instantane du salon, seulement si le join est accepte. */
   messages?: unknown[];
+  /** Qui est deja la, et qui est en train d'ecrire (etape 5). */
+  presents?: PresenceVue[];
 }
 
 export interface ResultatMessage {
@@ -61,6 +65,8 @@ export interface ResultatMessage {
 }
 
 export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
+  const presences = new Presences();
+
   const io = new Server(httpServer, {
     pingInterval: 25_000,
     pingTimeout: 20_000,
@@ -104,7 +110,36 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
     const socket = brut as SocketChat;
     const { membre, limiteur } = socket.data;
 
+    /** Retire la socket d'une room et programme, si besoin, un depart differe. */
+    function quitterRoom(s: SocketChat, room: string) {
+      s.leave(room);
+      presences.partir(room, s.id, (parti) => {
+        // Emis seulement si personne n'est revenu pendant le delai de grace.
+        io.to(room).emit("presence-left", { membre: parti });
+      });
+    }
+
+    // `disconnecting` et non `disconnect` : au moment ou `disconnect` se declenche,
+    // Socket.IO a deja vide `socket.rooms` et on ne saurait plus quelles rooms prevenir.
+    socket.on("disconnecting", () => {
+      for (const room of [...socket.rooms]) {
+        if (salonDeLaRoom(room)) quitterRoom(socket, room);
+      }
+    });
+
     socket.on("disconnect", () => limiteur.stop());
+
+    // --- signal ephemere : diffuse, jamais persiste --------------------------
+    // Pas d'ack : un `typing` perdu n'a aucune consequence, et il est reemis en
+    // permanence. Il compte dans le rate-limit, d'ou la marge prevue a l'etape 3.
+    socket.on("typing", () => {
+      if (!limiteur.hit()) return;
+      for (const room of socket.rooms) {
+        if (!salonDeLaRoom(room)) continue;
+        presences.signalerSaisie(room, socket.id);
+        socket.to(room).emit("typing", { membre });
+      }
+    });
 
     // --- join : la decision d'autorisation est portee par l'ACK, pas par un evenement separe.
     socket.on("join", (room: string, ack?: (r: ResultatJoin) => void) => {
@@ -115,25 +150,36 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
       }
 
       // Un onglet ne suit qu'un salon a la fois : on quitte les autres rooms de salon.
-      for (const precedente of socket.rooms) {
+      for (const precedente of [...socket.rooms]) {
         if (precedente !== socket.id && salonDeLaRoom(precedente)) {
-          socket.leave(precedente);
-          socket.to(precedente).emit("membre-parti", { membre });
+          quitterRoom(socket, precedente);
         }
       }
 
       socket.join(room);
       const salon = store.salons.get(salonDeLaRoom(room)!)!;
-      ack?.({ ok: true, messages: messagesDepuis(salon, 0).slice(-30) });
+      const { premiereConnexion } = presences.arriver(room, socket.id, membre);
 
-      // `socket.to(room)` exclut l'emetteur ; `io.to(room)` l'inclurait.
-      socket.to(room).emit("membre-rejoint", { membre, salonId: salon.id });
-      store.notifications.publier({
-        type: "membre-rejoint",
-        salonId: salon.id,
-        membre,
-        at: Date.now(),
+      // Le snapshot part dans l'ack : l'arrivant voit l'etat courant immediatement,
+      // sans attendre que quelqu'un d'autre bouge.
+      ack?.({
+        ok: true,
+        messages: messagesDepuis(salon, 0).slice(-30),
+        presents: presences.instantane(room),
       });
+
+      // Rien a annoncer si la personne avait deja un onglet ouvert, ou si elle revient
+      // avant la fin du delai de grace : dans les deux cas elle n'etait jamais "partie".
+      if (premiereConnexion) {
+        // `socket.to(room)` exclut l'emetteur ; `io.to(room)` l'inclurait.
+        socket.to(room).emit("presence-joined", { membre, salonId: salon.id });
+        store.notifications.publier({
+          type: "membre-rejoint",
+          salonId: salon.id,
+          membre,
+          at: Date.now(),
+        });
+      }
     });
 
     // --- evenement metier, confirme par ack -----------------------------------

@@ -75,8 +75,11 @@ sur l'evenement metier, rate-limiting a 15 messages/s. `ws-server.ts` (etape 3) 
 Le salon `dev` est **prive** (alice, bob) : il sert a demontrer le refus d'autorisation.
 Le front accepte `?membre=<pseudo>` et `?salon=<id>` pour ouvrir deux onglets distincts.
 
-Restent a corriger : pas de presence ni d'indicateur de saisie (etape 5), pas de deduplication
-a la reconnexion (etape 6), instance unique (etape 7), pas de signaling WebRTC (etape 8).
+La presence par salon, l'indicateur de saisie et le snapshot a la connexion sont en place
+(etape 5, `src/realtime/presence.ts`) : `npm run test:presence`.
+
+Restent a corriger : pas de deduplication a la reconnexion (etape 6), instance unique
+(etape 7), pas de signaling WebRTC (etape 8).
 `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication : `npm run scenario`.
 
 Le canal SSE de l'etape 2 (`GET /api/stream`) reste disponible pour un client en lecture seule.
