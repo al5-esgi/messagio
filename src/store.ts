@@ -1,5 +1,9 @@
 import { buildSeed, MEMBRES } from "./seed.ts";
-import { poster, type Salon } from "./domain.ts";
+import { poster, type Message, type Salon } from "./domain.ts";
+import {
+  creerBusNotifications,
+  type BusNotifications,
+} from "./realtime/sse-notifications.ts";
 
 // Le stub : un seul WebSocketServer, aucun salon cote transport. Tout le monde recoit
 // les messages de tous les salons. Pas de presence, pas d'indicateur de saisie,
@@ -8,10 +12,38 @@ import { poster, type Salon } from "./domain.ts";
 export interface Store {
   salons: Map<string, Salon>;
   membres: typeof MEMBRES;
+  /** Canal SSE (etape 2) : notifie les nouveaux messages et les arrivees de membres. */
+  notifications: BusNotifications;
 }
 
 export function createStore(): Store {
-  return { salons: buildSeed(), membres: MEMBRES };
+  return {
+    salons: buildSeed(),
+    membres: MEMBRES,
+    notifications: creerBusNotifications(),
+  };
+}
+
+/**
+ * Poste un message ET publie la notification correspondante.
+ * Point de passage unique : REST et stub WebSocket alimentent le meme flux SSE.
+ */
+export function posterEtNotifier(
+  store: Store,
+  salon: Salon,
+  auteur: string,
+  texte: string,
+): Message {
+  const msg = poster(salon, auteur, texte);
+  store.notifications.publier({
+    type: "message",
+    salonId: msg.salonId,
+    seq: msg.seq,
+    auteur: msg.auteur,
+    texte: msg.texte,
+    at: msg.at,
+  });
+  return msg;
 }
 
 export interface ClientMessage {
@@ -38,5 +70,6 @@ export function parseClientMessage(raw: unknown): ClientMessage | null {
 export function applyNaive(store: Store, msg: ClientMessage): void {
   if (msg.kind !== "message" || !msg.texte) return; // "typing" est ignore par le stub
   const salon = store.salons.get(msg.salonId);
-  if (salon) poster(salon, msg.auteur, msg.texte); // aucune verification d'appartenance au salon
+  // aucune verification d'appartenance au salon (defaut du stub, corrige etape 4)
+  if (salon) posterEtNotifier(store, salon, msg.auteur, msg.texte);
 }

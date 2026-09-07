@@ -46,6 +46,22 @@ npm start          # http://localhost:3000
 | GET | `/api/salons` | liste des salons |
 | GET | `/api/salons/:id/messages?since=<seq>` | messages d'un salon depuis un numero de sequence |
 | POST | `/api/salons/:id/messages` | poste un message (`{ "auteur": "...", "texte": "..." }`) |
+| GET | `/api/stream` | flux SSE des notifications de salon (voir ci-dessous) |
+
+### Canal SSE (etape 2)
+
+`GET /api/stream` emet en `text/event-stream` les notifications de salon : `message` et
+`membre-rejoint`. Parametres optionnels : `?salon=<id>` pour filtrer, `?membre=<pseudo>` pour
+signaler une arrivee.
+
+```bash
+curl -N http://localhost:3000/api/stream                       # flux live, tous salons
+curl -N "http://localhost:3000/api/stream?salon=general"       # un seul salon
+curl -N -H "Last-Event-ID: 5" http://localhost:3000/api/stream # rattrapage a partir du 6
+```
+
+Le buffer de rejeu est borne a 100 evenements (`MAX_BUFFER`). Au-dela, le client recoit un
+evenement `resync-needed` et doit repartir d'un instantane REST.
 
 Donnees de demonstration : `npm run seed` (3 salons, ~40 messages).
 
