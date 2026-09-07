@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chat multi-salons</title>
+    <style>
+      body {
+        font:
+          14px system-ui,
+          sans-serif;
+        margin: 1.5rem;
+        max-width: 720px;
+      }
+      #salons button {
+        font: inherit;
+        margin: 2px;
+      }
+      #salons button.sel {
+        font-weight: bold;
+        outline: 2px solid #333;
+      }
+      #fil {
+        border: 1px solid #ccc;
+        height: 45vh;
+        overflow: auto;
+        padding: 0.5rem;
+        margin: 0.5rem 0;
+      }
+      .msg {
+        margin: 2px 0;
+      }
+      .auteur {
+        font-weight: bold;
+      }
+      .hint {
+        color: #666;
+      }
+      form {
+        display: flex;
+        gap: 0.5rem;
+      }
+      input {
+        flex: 1;
+        font: inherit;
+        padding: 4px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Chat <span id="status" class="hint">deconnecte</span></h1>
+    <div id="salons"></div>
+    <p class="hint">
+      Ouvrez 2 onglets. Choisissez des salons differents : vous voyez quand meme
+      les messages de l'autre salon (le stub n'a pas de room). Pas d'indicateur
+      de saisie, pas de liste de presents. Rechargez : les messages recus
+      pendant l'absence sont perdus.
+    </p>
+    <div id="fil"></div>
+    <form id="f">
+      <input id="t" placeholder="message..." autocomplete="off" /><button>
+        Envoyer
+      </button>
+    </form>
+
+    <script>
+      const me = "u" + Math.floor(Math.random() * 1000);
+      let sel = "general";
+      const status = document.getElementById("status");
+      const fil = document.getElementById("fil");
+
+      fetch("/api/salons")
+        .then((r) => r.json())
+        .then((list) => {
+          document.getElementById("salons").innerHTML = list
+            .map((s) => `<button data-s="${s.id}">${s.nom}</button>`)
+            .join("");
+          document.querySelectorAll("#salons button").forEach((b) => {
+            b.onclick = () => {
+              sel = b.dataset.s;
+              render();
+              mark();
+            };
+          });
+          mark();
+          render();
+        });
+      function mark() {
+        document
+          .querySelectorAll("#salons button")
+          .forEach((b) => b.classList.toggle("sel", b.dataset.s === sel));
+      }
+
+      let state = {};
+      const ws = new WebSocket(`ws://${location.host}`);
+      ws.onopen = () => (status.textContent = "connecte " + me);
+      ws.onclose = () => (status.textContent = "deconnecte");
+      ws.onmessage = (e) => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === "state") {
+          state = msg.state;
+          render();
+        }
+      };
+
+      function render() {
+        const msgs = state[sel] ?? [];
+        fil.innerHTML = msgs
+          .map(
+            (m) =>
+              `<div class="msg"><span class="auteur">${m.auteur}</span> ${m.texte}</div>`,
+          )
+          .join("");
+        fil.scrollTop = fil.scrollHeight;
+      }
+
+      document.getElementById("f").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const t = document.getElementById("t");
+        if (!t.value) return;
+        ws.send(
+          JSON.stringify({
+            kind: "message",
+            salonId: sel,
+            auteur: me,
+            texte: t.value,
+          }),
+        );
+        t.value = "";
+      });
+    </script>
+  </body>
+</html>
