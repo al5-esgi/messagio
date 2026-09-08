@@ -5,37 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat multi-salons</title>
     <style>
+      /* Theme clair VERROUILLE : la page est destinee a etre projetee. On ne suit pas
+         `prefers-color-scheme`, sinon le rendu dependrait des reglages de la machine
+         qui presente. Les gris sont volontairement plus sombres que pour un ecran :
+         un videoprojecteur delave les valeurs claires. */
       :root {
-        color-scheme: light dark;
-        --fond: #f7f8fa;
+        color-scheme: light;
+        --fond: #f4f6f9;
         --panneau: #ffffff;
-        --bord: #e3e6ec;
-        --texte: #1a1d23;
-        --faible: #6b7280;
-        --tres-faible: #9aa1ad;
-        --accent: #4f46e5;
-        --accent-doux: #eef2ff;
-        --ok: #16a34a;
-        --alerte: #d97706;
-        --erreur: #dc2626;
-        --saisie: #b45309;
+        --bord: #d8dde6;
+        --texte: #14171c;
+        --faible: #4b5563;
+        --tres-faible: #6b7280;
+        --accent: #4338ca;
+        --accent-doux: #e8eaff;
+        --ok: #15803d;
+        --alerte: #b45309;
+        --erreur: #b91c1c;
+        --saisie: #92400e;
         --rayon: 10px;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          --fond: #14161a;
-          --panneau: #1b1e24;
-          --bord: #2a2f38;
-          --texte: #e7e9ee;
-          --faible: #9aa1ad;
-          --tres-faible: #6b7280;
-          --accent: #818cf8;
-          --accent-doux: #262a44;
-          --ok: #4ade80;
-          --alerte: #fbbf24;
-          --erreur: #f87171;
-          --saisie: #fbbf24;
-        }
       }
 
       * { box-sizing: border-box; }
