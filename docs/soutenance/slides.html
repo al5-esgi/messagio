@@ -10,29 +10,40 @@
 </section>
 
 <section>
-  <h2>Le point de départ : un stub qui ment</h2>
-  <p class="intro">Trois défauts, mesurés et non supposés.</p>
+  <h2>Le point de départ</h2>
+  <p class="intro">Le template fourni contient un module temps réel <b>volontairement naïf</b> —
+  un « bouchon » : juste assez pour que la démo tourne, avec des défauts délibérés.
+  J'ai commencé par les mesurer.</p>
   <div class="cartes">
     <div class="carte">
-      <span class="chiffre">2917 o</span>
-      <p>toutes les 500 ms, <b>sans qu'aucun message ne soit posté</b></p>
+      <span class="titre-carte">Il réémet tout, tout le temps</span>
+      <p><b>2,9 Ko de JSON toutes les 500 ms</b> et par client — même quand personne
+      n'écrit. Zéro information nouvelle.</p>
     </div>
     <div class="carte">
-      <span class="chiffre">3 / 3</span>
-      <p>salons envoyés à chaque client — le filtrage était <b>cosmétique</b>, côté client</p>
+      <span class="titre-carte">Il envoie tout à tout le monde</span>
+      <p>Les <b>3 salons</b> partent à chaque client. Le tri par salon est fait
+      <b>par le navigateur</b> : aucun cloisonnement réel.</p>
     </div>
     <div class="carte">
-      <span class="chiffre">seq 1→7</span>
-      <p>perdus après 35 messages ratés, <b>sans que rien ne le signale</b></p>
+      <span class="titre-carte">Il perd des messages en silence</span>
+      <p>Après 35 messages manqués, la reprise saute au <b>n° 8</b> : les sept premiers
+      sont perdus, <b>et rien ne le signale</b>.</p>
     </div>
   </div>
   <p class="cle">La progression n'est pas une liste de technologies,<br>
   c'est une liste de <b>garanties manquantes</b>.</p>
   <aside class="notes">
-    <b>[0:15 → 1:05]</b> Ces chiffres viennent d'une sonde, pas d'une lecture du code.
-    Le troisième défaut est le plus grave car il est <i>silencieux</i>. Annoncer le fil :
-    rattraper, savoir qui parle, à qui, qui est là, ne pas compter deux fois, tenir la charge,
-    se passer du serveur.
+    <b>[0:15 → 1:05]</b> Dire ce qu'est un bouchon : une implémentation minimale, écrite pour
+    que le reste fonctionne sans la vraie logique. Ici les défauts sont voulus, c'est le
+    support du module.
+    <br><br>
+    Insister : ces trois constats viennent d'une <b>sonde WebSocket</b>, pas d'une lecture du
+    code. Le troisième est le plus grave parce qu'il est <i>silencieux</i> — l'utilisateur ne
+    sait pas qu'il a perdu des messages. C'est lui qui structurera les séances 6 et 9.
+    <br><br>
+    Si on demande le détail : le stub sérialise l'état complet des trois salons à chaque tick
+    de 500 ms, soit 2917 octets mesurés.
   </aside>
 </section>
 
