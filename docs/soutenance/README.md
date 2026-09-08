@@ -21,17 +21,25 @@ réseau — il s'ouvre par double-clic, y compris sur une machine qui n'est pas 
 La vue orateur ouvre une seconde fenêtre : à mettre sur votre écran, la principale sur le
 vidéoprojecteur. **Chaque slide porte son créneau horaire** dans les notes.
 
-## Minutage
+## Minutage — 10 min, questions non comprises
 
 | Bloc | Créneau |
 |---|---|
-| Slides 1 à 10 (contexte + les 9 séances) | 0:00 → 10:10 |
-| Démonstration | 10:10 → 14:00 |
-| ADR + limites + questions | 14:00 → 15:00 |
+| Constat + séances 1 à 3 | 0:00 → 2:05 |
+| Socket.IO, rooms, présence | 2:05 → 4:15 |
+| Convergence + scaling | 4:15 → 6:10 |
+| WebRTC + chaos | 6:10 → 8:00 |
+| Démonstration | 8:00 → 10:00 |
 
-Soit **10 min de slides + 4 min de démo**, avec une marge d'une minute. Si vous êtes en retard
-à la slide 8, la démo peut se réduire aux points 1, 3 et 4 — le cloisonnement, la présence
-distribuée et le chaos sont les trois qui portent le plus.
+**11 slides : 8 min d'exposé, 2 min de démo.** Les notes de chaque slide portent son créneau ;
+si vous êtes en avance ou en retard, la vue orateur vous le dira.
+
+La dernière slide reste affichée pendant les questions : elle porte les trois ADR et les
+limites connues, c'est-à-dire de quoi répondre à la moitié de ce qu'on vous demandera.
+
+Deux slides sont volontairement plus lentes que les autres, parce qu'elles portent le fond :
+**« Socket.IO n'est pas WebSocket »** et **« WebRTC : pair-à-pair, mais pas sans serveur »**.
+Ne les expédiez pas.
 
 ## Avant de commencer, dans cet ordre
 
@@ -61,7 +69,7 @@ node docs/soutenance/build.mjs
 
 | Fichier | Rôle |
 |---|---|
-| `slides.html` | le contenu des 14 slides et les notes de l'orateur |
+| `slides.html` | le contenu des 11 slides et les notes de l'orateur |
 | `theme.css` | le thème clair, verrouillé pour la vidéoprojection |
 | `gabarit.html` | la coquille et la configuration de reveal |
 | `build.mjs` | inline les dépendances et enveloppe le contenu pour le centrage |
