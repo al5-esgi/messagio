@@ -3,7 +3,14 @@ import type { Server as HttpServer } from "node:http";
 import { verifyJwtPayload, RateLimiter, SECRET } from "./security-helpers.ts";
 import { messagesDepuis, peutRejoindre } from "../domain.ts";
 import { posterEtNotifier, type Store } from "../store.ts";
-import { Presences, type PresenceVue } from "./presence.ts";
+import {
+  DepartsDifferes,
+  membresDeLaRoom,
+  estPresent,
+  DUREE_SAISIE_MS,
+  type PresenceVue,
+  type DonneesPresence,
+} from "./presence.ts";
 
 // ============================================================================
 //  Serveur Socket.IO - remplace ws-server.ts (TRANSPOSITION.md, etape 4).
@@ -43,10 +50,16 @@ function salonDeLaRoom(room: string): string | null {
   return room.startsWith("salon:") ? room.slice("salon:".length) : null;
 }
 
-interface DonneesSocket {
-  membre: string;
-  limiteur: RateLimiter;
-}
+/**
+ * Contenu de `socket.data`.
+ *
+ * ATTENTION (etape 7) : avec l'adapter Redis, `fetchSockets()` SERIALISE `socket.data`
+ * en JSON pour le transmettre aux autres instances. Tout ce qu'on y met doit donc etre
+ * serialisable. Un `RateLimiter` y ferait entrer un `setInterval`, dont la structure est
+ * circulaire : `JSON.stringify` leve, et l'instance interrogee tombe. Le limiteur est
+ * donc garde a part, dans une Map locale.
+ */
+interface DonneesSocket extends DonneesPresence {}
 
 type SocketChat = Socket & { data: DonneesSocket };
 
@@ -78,7 +91,9 @@ export interface ResultatMessage {
 }
 
 export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
-  const presences = new Presences();
+  const departs = new DepartsDifferes();
+  /** Limiteurs par socket. Hors de `socket.data` : voir DonneesSocket. */
+  const limiteurs = new Map<string, RateLimiter>();
 
   const io = new Server(httpServer, {
     pingInterval: 25_000,
@@ -93,9 +108,7 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
     const payload = verifyJwtPayload(token, SECRET);
     if (!payload) return next(new Error("unauthorized"));
     (socket.data as DonneesSocket).membre = payload.sub;
-    (socket.data as DonneesSocket).limiteur = new RateLimiter(
-      MAX_MESSAGES_PAR_SECONDE,
-    );
+    (socket.data as DonneesSocket).saisitJusqua = 0;
     next();
   });
 
@@ -122,14 +135,23 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
 
   io.on("connection", (brut) => {
     const socket = brut as SocketChat;
-    const { membre, limiteur } = socket.data;
+    const { membre } = socket.data;
+    const limiteur = new RateLimiter(MAX_MESSAGES_PAR_SECONDE);
+    limiteurs.set(socket.id, limiteur);
 
     /** Retire la socket d'une room et programme, si besoin, un depart differe. */
     function quitterRoom(s: SocketChat, room: string) {
       s.leave(room);
-      presences.partir(room, s.id, (parti) => {
-        // Emis seulement si personne n'est revenu pendant le delai de grace.
-        io.to(room).emit("presence-left", { membre: parti });
+      departs.programmer(room, s.data.membre, (parti) => {
+        // A l'echeance, on re-interroge TOUTES les instances : la personne a pu
+        // revenir ailleurs, ou avoir un autre onglet sur l'autre instance.
+        // Le callback d'un minuteur n'a personne pour rattraper une promesse rejetee :
+        // on capture ici, sinon le processus tombe.
+        void estPresent(io, room, parti)
+          .then((present) => {
+            if (!present) io.to(room).emit("presence-left", { membre: parti });
+          })
+          .catch(() => {});
       });
     }
 
@@ -141,79 +163,94 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
       }
     });
 
-    socket.on("disconnect", () => limiteur.stop());
+    socket.on("disconnect", () => {
+      limiteur.stop();
+      limiteurs.delete(socket.id);
+    });
 
     // --- signal ephemere : diffuse, jamais persiste --------------------------
     // Pas d'ack : un `typing` perdu n'a aucune consequence, et il est reemis en
     // permanence. Il compte dans le rate-limit, d'ou la marge prevue a l'etape 3.
     socket.on("typing", () => {
       if (!limiteur.hit()) return;
+      // Porte par la socket, donc visible des autres instances via fetchSockets().
+      socket.data.saisitJusqua = Date.now() + DUREE_SAISIE_MS;
       for (const room of socket.rooms) {
         if (!salonDeLaRoom(room)) continue;
-        presences.signalerSaisie(room, socket.id);
         socket.to(room).emit("typing", { membre });
       }
     });
 
     // --- join : la decision d'autorisation est portee par l'ACK, pas par un evenement separe.
     // Signature souple : `join(room, ack)` (etape 4) ou `join(room, options, ack)` (etape 6).
-    socket.on("join", (room: string, ...reste: unknown[]) => {
+    // Handler asynchrone : Socket.IO n'attrape pas les rejets, d'ou le try/catch global
+    // en fin de fonction. Sans lui, une instance qui ne repond pas ferait tomber celle-ci.
+    socket.on("join", async (room: string, ...reste: unknown[]) => {
       const ack = reste.find((a) => typeof a === "function") as
-        | ((r: ResultatJoin) => void)
-        | undefined;
-      const options = (reste.find(
-        (a) => a !== null && typeof a === "object",
-      ) ?? {}) as OptionsJoin;
+        ((r: ResultatJoin) => void) | undefined;
+      const options = (reste.find((a) => a !== null && typeof a === "object") ??
+        {}) as OptionsJoin;
 
-      const verdict = roomAutorisee(membre, room);
-      if (!verdict.ok) {
-        ack?.({ ok: false, raison: verdict.raison });
-        return;
-      }
-
-      // Un onglet ne suit qu'un salon a la fois : on quitte les autres rooms de salon.
-      for (const precedente of [...socket.rooms]) {
-        if (precedente !== socket.id && salonDeLaRoom(precedente)) {
-          quitterRoom(socket, precedente);
+      try {
+        const verdict = roomAutorisee(membre, room);
+        if (!verdict.ok) {
+          ack?.({ ok: false, raison: verdict.raison });
+          return;
         }
-      }
 
-      socket.join(room);
-      const salon = store.salons.get(salonDeLaRoom(room)!)!;
-      const { premiereConnexion } = presences.arriver(room, socket.id, membre);
+        // Un onglet ne suit qu'un salon a la fois : on quitte les autres rooms de salon.
+        for (const precedente of [...socket.rooms]) {
+          if (precedente !== socket.id && salonDeLaRoom(precedente)) {
+            quitterRoom(socket, precedente);
+          }
+        }
 
-      // Le snapshot part dans l'ack : l'arrivant voit l'etat courant immediatement,
-      // sans attendre que quelqu'un d'autre bouge.
-      //
-      // Etape 6 : si le client annonce un `depuisSeq`, on renvoie tout ce qui a suivi
-      // plutot que les 30 derniers messages - c'est la resynchronisation apres coupure.
-      // On ne cherche pas a eviter le chevauchement : le client deduplique par `seq`,
-      // donc renvoyer un message deja vu est sans consequence. C'est precisement ce qui
-      // rend le renvoi sur, alors qu'a l'etape 4 il produisait un doublon.
-      const depuisSeq = Number(options.depuisSeq ?? 0) || 0;
-      const messages =
-        depuisSeq > 0
-          ? messagesDepuis(salon, depuisSeq)
-          : messagesDepuis(salon, 0).slice(-30);
+        // Etat AVANT d'entrer : sert a decider s'il faut annoncer une arrivee.
+        const dejaLa = await estPresent(io, room, membre);
+        const retourDansLaGrace = departs.annuler(room, membre);
 
-      ack?.({
-        ok: true,
-        messages,
-        presents: presences.instantane(room),
-        dernierSeq: salon.dernierSeq,
-      });
+        socket.join(room);
+        const salon = store.salons.get(salonDeLaRoom(room)!)!;
+        const premiereConnexion = !dejaLa && !retourDansLaGrace;
 
-      // Rien a annoncer si la personne avait deja un onglet ouvert, ou si elle revient
-      // avant la fin du delai de grace : dans les deux cas elle n'etait jamais "partie".
-      if (premiereConnexion) {
-        // `socket.to(room)` exclut l'emetteur ; `io.to(room)` l'inclurait.
-        socket.to(room).emit("presence-joined", { membre, salonId: salon.id });
-        store.notifications.publier({
-          type: "membre-rejoint",
-          salonId: salon.id,
-          membre,
-          at: Date.now(),
+        // Le snapshot part dans l'ack : l'arrivant voit l'etat courant immediatement,
+        // sans attendre que quelqu'un d'autre bouge.
+        //
+        // Etape 6 : si le client annonce un `depuisSeq`, on renvoie tout ce qui a suivi
+        // plutot que les 30 derniers messages - c'est la resynchronisation apres coupure.
+        // On ne cherche pas a eviter le chevauchement : le client deduplique par `seq`,
+        // donc renvoyer un message deja vu est sans consequence. C'est precisement ce qui
+        // rend le renvoi sur, alors qu'a l'etape 4 il produisait un doublon.
+        const depuisSeq = Number(options.depuisSeq ?? 0) || 0;
+        const messages =
+          depuisSeq > 0
+            ? messagesDepuis(salon, depuisSeq)
+            : messagesDepuis(salon, 0).slice(-30);
+
+        ack?.({
+          ok: true,
+          messages,
+          presents: await membresDeLaRoom(io, room), // toutes instances confondues
+          dernierSeq: salon.dernierSeq,
         });
+
+        // Rien a annoncer si la personne avait deja un onglet ouvert, ou si elle revient
+        // avant la fin du delai de grace : dans les deux cas elle n'etait jamais "partie".
+        if (premiereConnexion) {
+          // `socket.to(room)` exclut l'emetteur ; `io.to(room)` l'inclurait.
+          socket
+            .to(room)
+            .emit("presence-joined", { membre, salonId: salon.id });
+          store.notifications.publier({
+            type: "membre-rejoint",
+            salonId: salon.id,
+            membre,
+            at: Date.now(),
+          });
+        }
+      } catch (err) {
+        console.error("[join] echec :", err);
+        ack?.({ ok: false, raison: "erreur serveur, reessayez" });
       }
     });
 

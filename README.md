@@ -83,7 +83,18 @@ le client deduplique par `seq` via `public/salon-client.js`. Verification :
 `npm run scenario` (echoue, divergence), `npm run scenario -- --avec-strategie` (converge),
 `npm run test:convergence`.
 
-Restent a corriger : instance unique (etape 7), pas de signaling WebRTC (etape 8).
+Le serveur tourne en **2 instances** derriere un proxy sticky, avec fan-out et presence
+distribues via Redis (etape 7) :
+
+```bash
+docker compose up --build      # redis + app-a + app-b + proxy sur :3000
+curl -s localhost:3001/metrics | grep ws_active_connections   # instance A
+curl -s localhost:3002/metrics | grep ws_active_connections   # instance B
+```
+
+Releve de charge et interpretation : `docs/captures/s7/releve-de-charge.md`.
+
+Reste a faire : le signaling WebRTC et la visio (etape 8).
 `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication : `npm run scenario`.
 
 Le canal SSE de l'etape 2 (`GET /api/stream`) reste disponible pour un client en lecture seule.

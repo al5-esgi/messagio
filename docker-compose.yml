@@ -1,43 +1,63 @@
-name: template
+name: messagio
+
+# ============================================================================
+#  ETAPE 7 - scaling horizontal : Redis + 2 instances + proxy sticky.
+#
+#  Le trafic passe par le proxy sur :3000 (nginx, ip_hash). Chaque instance est
+#  AUSSI exposee directement (:3001 et :3002) pour pouvoir relever /metrics par
+#  instance : a travers le proxy sticky, on retomberait toujours sur la meme.
+#
+#  Instance unique (etape 4 a 6) : `docker compose --profile solo up --build`,
+#  ou simplement `npm start` hors conteneur.
+# ============================================================================
 
 services:
   app:
+    profiles: ["solo"]
     build: .
     ports:
       - "3000:3000"
     environment:
       PORT: "3000"
-      # REDIS_URL: redis://redis:6379   # a decommenter a l'etape 7
 
-  # ==========================================================================
-  #  ETAPE 7 - scaling horizontal. Commentez le service `app` ci-dessus et
-  #  decommentez tout ce qui suit : 2 instances derriere un proxy sticky + Redis.
-  #  Il reste a brancher @socket.io/redis-adapter dans src/server.ts.
-  # ==========================================================================
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
 
-  # redis:
-  #   image: redis:7-alpine
+  app-a:
+    build: .
+    ports:
+      - "3001:3000" # acces direct pour /metrics
+    environment:
+      INSTANCE: A
+      PORT: "3000"
+      REDIS_URL: redis://redis:6379
+      ORIGINES_AUTORISEES: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://localhost:3002
+    depends_on:
+      redis:
+        condition: service_healthy
 
-  # app-a:
-  #   build: .
-  #   environment:
-  #     INSTANCE: A
-  #     PORT: "3000"
-  #     REDIS_URL: redis://redis:6379
-  #   depends_on: [redis]
+  app-b:
+    build: .
+    ports:
+      - "3002:3000" # acces direct pour /metrics
+    environment:
+      INSTANCE: B
+      PORT: "3000"
+      REDIS_URL: redis://redis:6379
+      ORIGINES_AUTORISEES: http://localhost:3000,http://127.0.0.1:3000,http://localhost:3001,http://localhost:3002
+    depends_on:
+      redis:
+        condition: service_healthy
 
-  # app-b:
-  #   build: .
-  #   environment:
-  #     INSTANCE: B
-  #     PORT: "3000"
-  #     REDIS_URL: redis://redis:6379
-  #   depends_on: [redis]
-
-  # proxy:
-  #   image: nginx:alpine
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
-  #   depends_on: [app-a, app-b]
+  proxy:
+    image: nginx:alpine
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on: [app-a, app-b]

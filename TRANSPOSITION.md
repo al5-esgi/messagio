@@ -27,7 +27,7 @@ Les ADR correspondants : `docs/adr/0001` (etape 2, acceptee etape 4), `docs/adr/
 | 4 - Socket.IO + rooms `salon:<id>` + ack | fait | `src/realtime/socketio-server.ts` |
 | 5 - presence + `typing` + snapshot | fait | `src/realtime/presence.ts` |
 | 6 - deduplication a la reconnexion | fait | `convergence.exemple.ts` branche, `public/salon-client.js` |
-| 7 - adaptateur Redis + presence distribuee | a faire | |
+| 7 - adaptateur Redis + presence distribuee | fait | `src/realtime/scaling.ts`, `docker-compose.yml` |
 | 8 - signaling WebRTC + visio | a faire | |
 
 Tranches du stub desormais remplacees : la diffusion « push tout a tout le monde » (rooms,
@@ -39,8 +39,11 @@ ephemere (etape 5), et le « rechargement total » a la connexion (snapshot dans
 Le renvoi apres coupure ne produit plus de doublon : le `seq` par salon sert de cle
 d'idempotence, le client deduplique (`npm run scenario`, `npm run test:convergence`).
 
-Reste que la presence et la numerotation ne survivent pas a une seconde instance (etape 7),
-et qu'il n'y a pas de signaling WebRTC (etape 8).
+La presence est distribuee : elle est calculee par `fetchSockets()`, que l'adapter Redis
+interroge sur toutes les instances. Deux clients repartis par le proxy se voient, s'ecrivent
+et voient leurs signaux de saisie (`docs/captures/s7/`).
+
+Reste le signaling WebRTC et la visio pair a pair (etape 8).
 
 ## Code fourni pour vous aider
 
