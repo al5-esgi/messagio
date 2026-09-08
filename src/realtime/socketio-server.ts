@@ -98,7 +98,8 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
     room: string,
   ): { ok: true } | { ok: false; raison: string } {
     const salonId = salonDeLaRoom(room);
-    if (!salonId) return { ok: false, raison: "room hors convention salon:<id>" };
+    if (!salonId)
+      return { ok: false, raison: "room hors convention salon:<id>" };
     const salon = store.salons.get(salonId);
     if (!salon) return { ok: false, raison: "salon inconnu" };
     if (!peutRejoindre(salon, membre))

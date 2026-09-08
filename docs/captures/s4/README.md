@@ -42,6 +42,22 @@ Console d'un onglet connecte : chaque envoi journalise
 `message confirme, seq = <n>`. Le `seq` est attribue par le serveur : c'est la preuve que le
 message est enregistre et numerote, pas seulement transmis.
 
+Le front utilise `socket.timeout(5000).emitWithAck(...)` : un ack qui n'arrive jamais est
+indiscernable d'un message perdu, donc l'attente est bornee. Verification depuis la console :
+
+```js
+await socket.timeout(5000).emitWithAck("message", { salonId: "general", texte: "test" });
+// -> { ok: true, seq: 40 }
+await socket.timeout(5000).emitWithAck("message", { salonId: "dev", texte: "x" });
+// -> { ok: false, raison: "rejoignez le salon avant d'y ecrire" }
+await socket.timeout(1000).emitWithAck("evenement-inconnu", {});
+// -> rejete : "operation has timed out"
+```
+
+Sur le `join`, l'echec du timeout affiche `pas de reponse du serveur en 5000 ms` plutot que de
+laisser l'interface suspendue. Sur le `message`, il affiche `etat incertain` **sans renvoyer** :
+un renvoi aveugle produirait un doublon, ce que traitera la deduplication de l'etape 6.
+
 ## Verifications automatisees
 
 Resultats obtenus par un client `socket.io-client` :

@@ -184,29 +184,42 @@
         renderPresence();
       }
 
-      function rejoindre(salonId) {
-        // L'ack porte la decision d'autorisation.
-        socket.emit("join", "salon:" + salonId, (res) => {
-          if (!res.ok) {
-            info("join " + salonId + " REFUSE : " + res.raison);
-            fil.innerHTML =
-              '<div class="msg refuse">acces refuse : ' + res.raison + "</div>";
-            presents = [];
-            ecrivent.clear();
-            renderPresence();
-            return;
-          }
-          sel = salonId;
-          messages = res.messages;
-          // Snapshot : on connait l'etat courant sans attendre que quelqu'un bouge.
-          presents = res.presents || [];
+      /** Un ack qui n'arrive jamais est indiscernable d'un message perdu : d'ou le timeout. */
+      const DELAI_ACK_MS = 5000;
+
+      async function rejoindre(salonId) {
+        let res;
+        try {
+          res = await socket
+            .timeout(DELAI_ACK_MS)
+            .emitWithAck("join", "salon:" + salonId);
+        } catch {
+          info(
+            "join " + salonId + " : pas de reponse du serveur en " + DELAI_ACK_MS + " ms",
+          );
+          return;
+        }
+
+        if (!res.ok) {
+          info("join " + salonId + " REFUSE : " + res.raison);
+          fil.innerHTML =
+            '<div class="msg refuse">acces refuse : ' + res.raison + "</div>";
+          presents = [];
           ecrivent.clear();
-          for (const p of presents) if (p.saisit) marquerEcrit(p.membre);
-          info("connecte " + me + " - salon " + sel);
-          mark();
-          render();
           renderPresence();
-        });
+          return;
+        }
+
+        sel = salonId;
+        messages = res.messages;
+        // Snapshot : on connait l'etat courant sans attendre que quelqu'un bouge.
+        presents = res.presents || [];
+        ecrivent.clear();
+        for (const p of presents) if (p.saisit) marquerEcrit(p.membre);
+        info("connecte " + me + " - salon " + sel);
+        mark();
+        render();
+        renderPresence();
       }
 
       function ligneSysteme(texte) {
@@ -263,10 +276,19 @@
         const texte = t.value;
         t.value = "";
         // Ack sur l'evenement metier : le serveur renvoie le seq qu'il a attribue.
-        socket.emit("message", { salonId: sel, texte }, (res) => {
-          if (!res.ok) info("message refuse : " + res.raison);
-          else console.log("message confirme, seq =", res.seq);
-        });
+        socket
+          .timeout(DELAI_ACK_MS)
+          .emitWithAck("message", { salonId: sel, texte })
+          .then((res) => {
+            if (!res.ok) info("message refuse : " + res.raison);
+            else console.log("message confirme, seq =", res.seq);
+          })
+          .catch(() => {
+            // Ni confirme ni refuse : le message est peut-etre passe. On le signale
+            // plutot que de le renvoyer, un renvoi aveugle produirait un doublon
+            // (c'est precisement ce que la deduplication de l'etape 6 traitera).
+            info("message non confirme apres " + DELAI_ACK_MS + " ms - etat incertain");
+          });
       });
     </script>
   </body>
