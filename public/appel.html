@@ -407,9 +407,15 @@
 
       /** Complement de diagnostic : etat de la permission et materiel visible. */
       async function diagnostiquer() {
+        // L'origine INCLUT LE PORT : localhost:3000, :3001 et :19001 sont trois sites
+        // distincts pour le navigateur. Une autorisation donnee sur l'un ne vaut pas
+        // pour les autres - piege facile ici, ou la pile expose quatre ports.
+        log("origine demandant la camera : " + location.origin, "sig");
         try {
           const p = await navigator.permissions?.query({ name: "camera" });
-          if (p) log("etat de la permission camera : " + p.state, "sig");
+          // `denied` vient du navigateur pour CETTE origine : c'est un blocage
+          // memorise cote site, pas le reglage macOS (qui, lui, n'est pas interrogeable ici).
+          if (p) log("etat de la permission camera (ce site) : " + p.state, "sig");
         } catch {
           log("ce navigateur n'expose pas l'etat de la permission camera", "sig");
         }
