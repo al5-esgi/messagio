@@ -5,107 +5,538 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chat multi-salons</title>
     <style>
+      :root {
+        color-scheme: light dark;
+        --fond: #f7f8fa;
+        --panneau: #ffffff;
+        --bord: #e3e6ec;
+        --texte: #1a1d23;
+        --faible: #6b7280;
+        --tres-faible: #9aa1ad;
+        --accent: #4f46e5;
+        --accent-doux: #eef2ff;
+        --ok: #16a34a;
+        --alerte: #d97706;
+        --erreur: #dc2626;
+        --saisie: #b45309;
+        --rayon: 10px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --fond: #14161a;
+          --panneau: #1b1e24;
+          --bord: #2a2f38;
+          --texte: #e7e9ee;
+          --faible: #9aa1ad;
+          --tres-faible: #6b7280;
+          --accent: #818cf8;
+          --accent-doux: #262a44;
+          --ok: #4ade80;
+          --alerte: #fbbf24;
+          --erreur: #f87171;
+          --saisie: #fbbf24;
+        }
+      }
+
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
       body {
-        font:
-          14px system-ui,
-          sans-serif;
-        margin: 1.5rem;
-        max-width: 720px;
+        margin: 0;
+        background: var(--fond);
+        color: var(--texte);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
       }
+
+      /* ---------- ossature ---------- */
+      .app {
+        height: 100%;
+        display: grid;
+        grid-template-columns: 220px 1fr 210px;
+        grid-template-rows: auto 1fr;
+        grid-template-areas:
+          "entete entete entete"
+          "salons fil    presents";
+        gap: 12px;
+        padding: 12px;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      .panneau {
+        background: var(--panneau);
+        border: 1px solid var(--bord);
+        border-radius: var(--rayon);
+        min-height: 0;
+      }
+
+      /* ---------- en-tete ---------- */
+      header {
+        grid-area: entete;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 14px;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        font-size: 15px;
+        margin: 0;
+        font-weight: 650;
+        letter-spacing: -0.01em;
+      }
+      .etat {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12.5px;
+        color: var(--faible);
+        margin-left: auto;
+        text-align: right;
+      }
+      .pastille {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--tres-faible);
+        flex-shrink: 0;
+      }
+      .pastille.on { background: var(--ok); }
+      .pastille.off { background: var(--erreur); }
+      .pastille.attente { background: var(--alerte); }
+      .etiquette {
+        font-size: 11px;
+        font-weight: 600;
+        padding: 2px 7px;
+        border-radius: 20px;
+        background: var(--accent-doux);
+        color: var(--accent);
+        white-space: nowrap;
+      }
+
+      /* ---------- colonne salons ---------- */
+      .colonne { grid-area: salons; display: flex; flex-direction: column; }
+      .titre-colonne {
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.07em;
+        color: var(--tres-faible);
+        font-weight: 650;
+        padding: 12px 14px 8px;
+      }
+      #salons { padding: 0 8px 8px; overflow-y: auto; }
       #salons button {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        width: 100%;
+        text-align: left;
         font: inherit;
-        margin: 2px;
+        color: var(--texte);
+        background: none;
+        border: 0;
+        border-radius: 7px;
+        padding: 7px 9px;
+        cursor: pointer;
       }
+      #salons button:hover { background: var(--fond); }
       #salons button.sel {
-        font-weight: bold;
-        outline: 2px solid #333;
+        background: var(--accent-doux);
+        color: var(--accent);
+        font-weight: 600;
       }
+      #salons .diese { color: var(--tres-faible); font-weight: 400; }
+      #salons button.sel .diese { color: var(--accent); }
+      .cadenas { margin-left: auto; font-size: 11px; color: var(--tres-faible); }
+
+      .moi {
+        margin-top: auto;
+        border-top: 1px solid var(--bord);
+        padding: 10px 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+      }
+
+      /* ---------- fil ---------- */
+      .centre {
+        grid-area: fil;
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+      .barre-salon {
+        padding: 10px 16px;
+        border-bottom: 1px solid var(--bord);
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .barre-salon strong { font-size: 14.5px; }
+      .barre-salon span { font-size: 12px; color: var(--tres-faible); }
+
       #fil {
-        border: 1px solid #ccc;
-        height: 45vh;
-        overflow: auto;
-        padding: 0.5rem;
-        margin: 0.5rem 0;
+        flex: 1;
+        overflow-y: auto;
+        padding: 12px 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
-      .msg {
-        margin: 2px 0;
+      .msg { display: flex; gap: 9px; padding: 3px 0; }
+      .msg.groupe { padding-top: 8px; }
+      .avatar {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 650;
+        flex-shrink: 0;
       }
-      .auteur {
-        font-weight: bold;
+      .avatar.creux { background: none; }
+      .corps { min-width: 0; flex: 1; }
+      .ligne-auteur {
+        display: flex;
+        align-items: baseline;
+        gap: 7px;
+        margin-bottom: 1px;
       }
-      .hint {
-        color: #666;
+      .auteur { font-weight: 650; font-size: 13px; }
+      .heure { font-size: 11px; color: var(--tres-faible); }
+      .seq {
+        font-size: 10.5px;
+        color: var(--tres-faible);
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        opacity: 0.75;
       }
+      .texte { overflow-wrap: anywhere; }
+
+      .msg.systeme {
+        justify-content: center;
+        color: var(--faible);
+        font-size: 12px;
+        font-style: italic;
+        padding: 6px 0;
+      }
+      .msg.refuse {
+        display: block;
+        color: var(--erreur);
+        font-weight: 600;
+        text-align: center;
+        padding: 24px;
+      }
+      .vide {
+        margin: auto;
+        color: var(--tres-faible);
+        font-size: 13px;
+        text-align: center;
+      }
+
+      #saisie {
+        min-height: 20px;
+        padding: 0 16px 4px;
+        font-size: 12px;
+        color: var(--saisie);
+        font-style: italic;
+      }
+
       form {
         display: flex;
-        gap: 0.5rem;
+        gap: 8px;
+        padding: 10px 12px 12px;
+        border-top: 1px solid var(--bord);
       }
-      input {
+      #t {
         flex: 1;
         font: inherit;
-        padding: 4px;
+        padding: 9px 12px;
+        border: 1px solid var(--bord);
+        border-radius: 8px;
+        background: var(--fond);
+        color: var(--texte);
       }
-      .msg.systeme { color: #888; font-style: italic; }
-      .msg.refuse { color: #c00; font-weight: 600; }
-      .aide code { background: #eee; padding: 1px 4px; border-radius: 3px; }
-      #presence {
-        margin: 6px 0;
+      #t:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+      form button {
+        font: inherit;
+        font-weight: 600;
+        padding: 9px 16px;
+        border: 0;
+        border-radius: 8px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+      }
+      form button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      /* ---------- presents ---------- */
+      .droite { grid-area: presents; display: flex; flex-direction: column; }
+      #presence { padding: 0 8px 8px; overflow-y: auto; }
+      .qui {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 5px 8px;
+        border-radius: 7px;
         font-size: 13px;
-        color: #444;
-        min-height: 18px;
       }
-      #presence .qui {
-        display: inline-block;
-        background: #eef;
-        border-radius: 10px;
-        padding: 1px 8px;
-        margin-right: 4px;
+      .qui .avatar { width: 24px; height: 24px; font-size: 11px; }
+      .qui.ecrit { color: var(--saisie); }
+      .qui .plume { margin-left: auto; font-size: 11px; }
+      .personne { padding: 4px 10px; color: var(--tres-faible); font-size: 12.5px; }
+
+      .aide {
+        border-top: 1px solid var(--bord);
+        margin-top: auto;
+        padding: 10px 14px;
+        font-size: 11.5px;
+        line-height: 1.5;
+        color: var(--tres-faible);
       }
-      #presence .qui.ecrit { background: #ffeaa7; }
-      #saisie {
-        min-height: 18px;
-        font-size: 12px;
-        color: #888;
-        font-style: italic;
+      .aide code {
+        background: var(--fond);
+        border: 1px solid var(--bord);
+        border-radius: 4px;
+        padding: 0 3px;
+        font-size: 11px;
+      }
+
+      /* ---------- etroit ---------- */
+      @media (max-width: 860px) {
+        .app {
+          grid-template-columns: 1fr;
+          grid-template-areas: "entete" "salons" "fil" "presents";
+          height: auto;
+        }
+        .centre { height: 60vh; }
+        #salons { display: flex; gap: 4px; overflow-x: auto; }
+        #salons button { width: auto; white-space: nowrap; }
+        .moi { margin-top: 0; }
       }
     </style>
   </head>
   <body>
-    <h1>Chat <span id="status" class="hint">deconnecte</span></h1>
-    <div id="salons"></div>
-    <p class="aide">
-      Ouvrez 2 onglets sur des salons differents : les messages ne se melangent plus
-      (une room <code>salon:&lt;id&gt;</code> par salon). Identifiez-vous avec
-      <code>?membre=alice</code> dans l'URL. Le salon <strong>Dev</strong> est prive :
-      reserve a alice et bob.
-    </p>
-    <div id="presence"></div>
-    <div id="fil"></div>
-    <div id="saisie"></div>
-    <form id="f">
-      <input id="t" placeholder="message..." autocomplete="off" /><button>
-        Envoyer
-      </button>
-    </form>
+    <div class="app">
+      <header class="panneau">
+        <h1>Chat multi-salons</h1>
+        <span class="etiquette" id="instance" hidden></span>
+        <div class="etat">
+          <span class="pastille" id="pastille"></span>
+          <span id="status">connexion...</span>
+        </div>
+      </header>
+
+      <nav class="panneau colonne">
+        <div class="titre-colonne">Salons</div>
+        <div id="salons"></div>
+        <div class="moi">
+          <span class="avatar" id="mon-avatar"></span>
+          <span id="mon-nom"></span>
+        </div>
+      </nav>
+
+      <main class="panneau centre">
+        <div class="barre-salon">
+          <strong id="nom-salon">#general</strong>
+          <span id="info-salon"></span>
+        </div>
+        <div id="fil"></div>
+        <div id="saisie"></div>
+        <form id="f">
+          <input id="t" placeholder="Ecrire un message..." autocomplete="off" />
+          <button id="envoyer">Envoyer</button>
+        </form>
+      </main>
+
+      <aside class="panneau droite">
+        <div class="titre-colonne">Presents (<span id="nb-presents">0</span>)</div>
+        <div id="presence"></div>
+        <div class="aide">
+          <code>?membre=alice</code> pour choisir son identite,
+          <code>?salon=dev</code> pour le salon d'arrivee.
+          <strong>Dev</strong> est prive : alice et bob seulement.
+        </div>
+      </aside>
+    </div>
 
     <script src="/socket.io/socket.io.js"></script>
     <script type="module">
       // Etape 4 : Socket.IO. Une room par salon, un ack sur chaque action.
       // Etape 6 : deduplication par `seq` et resynchronisation apres coupure.
       import { SalonClient } from "./salon-client.js";
+
       const params = new URLSearchParams(location.search);
       const me = params.get("membre") || "u" + Math.floor(Math.random() * 1000);
       let sel = params.get("salon") || "general";
-      const status = document.getElementById("status");
-      const fil = document.getElementById("fil");
+      const $ = (id) => document.getElementById(id);
+      const fil = $("fil");
       let socket = null;
+      let salons = [];
 
-      const info = (t) => (status.textContent = t);
+      /** Un ack qui n'arrive jamais est indiscernable d'un message perdu : d'ou le timeout. */
+      const DELAI_ACK_MS = 5000;
 
+      // Un SalonClient par salon : il garde les seq deja vus, donc un renvoi
+      // (reconnexion, chevauchement, message recu deux fois) n'ajoute pas de doublon.
+      const clients = new Map();
+      const clientDu = (salonId) => {
+        if (!clients.has(salonId)) clients.set(salonId, new SalonClient());
+        return clients.get(salonId);
+      };
+
+      let messages = [];
+      let presents = [];              // [{ membre, saisit }]
+      const ecrivent = new Map();     // membre -> minuteur d'expiration du "X ecrit"
+
+      // ---------- presentation ----------
+      const TEINTES = [210, 340, 150, 30, 265, 190, 95, 15];
+      const teinte = (nom) => {
+        let h = 0;
+        for (const c of nom) h = (h * 31 + c.charCodeAt(0)) % 360;
+        return TEINTES[h % TEINTES.length];
+      };
+      const avatar = (nom, classe = "avatar") =>
+        `<span class="${classe}" style="background:hsl(${teinte(nom)} 58% 48%)">` +
+        `${nom.slice(0, 1).toUpperCase()}</span>`;
+      const heure = (at) =>
+        new Date(at).toLocaleTimeString("fr-FR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      const echapper = (s) =>
+        String(s).replace(/[&<>"]/g, (c) =>
+          ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
+        );
+
+      function info(texte, classe = "") {
+        $("status").textContent = texte;
+        $("pastille").className = "pastille " + classe;
+      }
+
+      $("mon-avatar").outerHTML = avatar(me);
+      $("mon-nom").textContent = me;
+
+      // ---------- rendu ----------
+      function render() {
+        if (!messages.length) {
+          fil.innerHTML = '<div class="vide">Aucun message dans ce salon.</div>';
+          return;
+        }
+        let precedent = null;
+        fil.innerHTML = messages
+          .map((m) => {
+            if (m.systeme)
+              return (precedent = null), `<div class="msg systeme">${echapper(m.texte)}</div>`;
+            // On regroupe les messages consecutifs d'un meme auteur.
+            const groupe = precedent !== m.auteur;
+            precedent = m.auteur;
+            return `<div class="msg${groupe ? " groupe" : ""}">
+              ${groupe ? avatar(m.auteur) : '<span class="avatar creux"></span>'}
+              <div class="corps">
+                ${
+                  groupe
+                    ? `<div class="ligne-auteur">
+                         <span class="auteur">${echapper(m.auteur)}</span>
+                         <span class="heure">${heure(m.at)}</span>
+                         <span class="seq">#${m.seq}</span>
+                       </div>`
+                    : ""
+                }
+                <div class="texte">${echapper(m.texte)}</div>
+              </div>
+            </div>`;
+          })
+          .join("");
+        fil.scrollTop = fil.scrollHeight;
+      }
+
+      function renderPresence() {
+        $("nb-presents").textContent = presents.length;
+        $("presence").innerHTML = presents.length
+          ? presents
+              .map((p) => {
+                const ecrit = ecrivent.has(p.membre);
+                return `<div class="qui${ecrit ? " ecrit" : ""}">
+                  ${avatar(p.membre)}
+                  <span>${echapper(p.membre)}${p.membre === me ? " (vous)" : ""}</span>
+                  ${ecrit ? '<span class="plume">ecrit</span>' : ""}
+                </div>`;
+              })
+              .join("")
+          : '<div class="personne">Personne d\'autre ici.</div>';
+
+        const noms = [...ecrivent.keys()].filter((m) => m !== me);
+        $("saisie").textContent = noms.length
+          ? noms.join(", ") + (noms.length > 1 ? " ecrivent..." : " ecrit...")
+          : "";
+      }
+
+      function renderSalons() {
+        $("salons").innerHTML = salons
+          .map(
+            (s) => `<button data-s="${s.id}">
+              <span class="diese">#</span><span>${echapper(s.nom)}</span>
+              ${s.prive ? '<span class="cadenas">prive</span>' : ""}
+            </button>`,
+          )
+          .join("");
+        for (const b of document.querySelectorAll("#salons button")) {
+          b.onclick = () => rejoindre(b.dataset.s);
+        }
+        mark();
+      }
+
+      function mark() {
+        for (const b of document.querySelectorAll("#salons button")) {
+          b.classList.toggle("sel", b.dataset.s === sel);
+        }
+        const s = salons.find((x) => x.id === sel);
+        $("nom-salon").textContent = "#" + (s ? s.nom : sel);
+        $("info-salon").textContent = s?.prive ? "salon prive" : "";
+      }
+
+      // Le signal est ephemere : s'il cesse d'etre reemis, il expire tout seul.
+      function marquerEcrit(membre) {
+        clearTimeout(ecrivent.get(membre));
+        ecrivent.set(
+          membre,
+          setTimeout(() => {
+            ecrivent.delete(membre);
+            renderPresence();
+          }, 4000),
+        );
+        renderPresence();
+      }
+
+      function ligneSysteme(texte) {
+        messages.push({ systeme: true, texte });
+        render();
+      }
+
+      // ---------- connexion ----------
       fetch("/api/dev-token?pseudo=" + encodeURIComponent(me))
         .then((r) => r.json())
         .then(({ token }) => demarrer(token))
-        .catch(() => info("jeton indisponible"));
+        .catch(() => info("jeton indisponible", "off"));
+
+      // Quelle instance nous sert (etape 7, derriere le proxy sticky).
+      fetch("/instance")
+        .then((r) => r.json())
+        .then(({ instance }) => {
+          if (!instance || instance === "solo") return;
+          $("instance").textContent = "instance " + instance;
+          $("instance").hidden = false;
+        })
+        .catch(() => {});
+
+      fetch("/api/salons")
+        .then((r) => r.json())
+        .then((list) => {
+          salons = list;
+          renderSalons();
+        });
 
       function demarrer(token) {
         // Le jeton passe par `auth`, pas par l'URL : il ne finit pas dans les journaux.
@@ -116,27 +547,27 @@
         window.clients = clients;
 
         socket.on("connect", () => {
-          info("connecte " + me);
+          info("connecte", "on");
           rejoindre(sel);
         });
 
         socket.on("connect_error", (e) =>
-          info("connexion refusee : " + e.message),
+          info("connexion refusee : " + e.message, "off"),
         );
-        socket.on("disconnect", (r) => info("deconnecte (" + r + ")"));
+        socket.on("disconnect", (r) => info("deconnecte (" + r + ")", "off"));
 
         // Reconnexion automatique : Socket.IO la gere, il faut seulement
         // REJOINDRE a nouveau la room - une room ne survit pas a la session.
         socket.io.on("reconnect", (n) => {
-          // La room ne survit pas a la session : il faut re-join. On en profite pour
-          // demander la suite depuis notre dernier seq connu (etape 6).
           info(
-            "reconnecte (tentative " + n + ") - resync de " + sel +
-              " depuis seq " + clientDu(sel).lastSeq,
+            "reconnecte (essai " + n + ") - resync depuis seq " + clientDu(sel).lastSeq,
+            "on",
           );
           rejoindre(sel);
         });
-        socket.io.on("reconnect_attempt", (n) => info("reconnexion... " + n));
+        socket.io.on("reconnect_attempt", (n) =>
+          info("reconnexion... " + n, "attente"),
+        );
 
         socket.on("message", (msg) => {
           // Meme en direct on passe par la deduplication : un message peut arriver
@@ -165,52 +596,9 @@
         socket.on("typing", ({ membre }) => marquerEcrit(membre));
       }
 
-      // Un SalonClient par salon : il garde les seq deja vus, donc un renvoi
-      // (reconnexion, chevauchement, message recu deux fois) n'ajoute pas de doublon.
-      const clients = new Map();
-      const clientDu = (salonId) => {
-        if (!clients.has(salonId)) clients.set(salonId, new SalonClient());
-        return clients.get(salonId);
-      };
-      let messages = [];
-      let presents = [];              // [{ membre, saisit }]
-      const ecrivent = new Map();     // membre -> minuteur d'expiration du "X ecrit"
-
-      function renderPresence() {
-        document.getElementById("presence").innerHTML = presents.length
-          ? presents
-              .map(
-                (p) =>
-                  `<span class="qui${ecrivent.has(p.membre) ? " ecrit" : ""}">${p.membre}</span>`,
-              )
-              .join("")
-          : '<span style="color:#999">personne d\'autre ici</span>';
-
-        const noms = [...ecrivent.keys()].filter((m) => m !== me);
-        document.getElementById("saisie").textContent = noms.length
-          ? noms.join(", ") + (noms.length > 1 ? " ecrivent..." : " ecrit...")
-          : "";
-      }
-
-      // Le signal est ephemere : s'il cesse d'etre reemis, il expire tout seul.
-      function marquerEcrit(membre) {
-        clearTimeout(ecrivent.get(membre));
-        ecrivent.set(
-          membre,
-          setTimeout(() => {
-            ecrivent.delete(membre);
-            renderPresence();
-          }, 4000),
-        );
-        renderPresence();
-      }
-
-      /** Un ack qui n'arrive jamais est indiscernable d'un message perdu : d'ou le timeout. */
-      const DELAI_ACK_MS = 5000;
-
       async function rejoindre(salonId) {
-        let res;
         const client = clientDu(salonId);
+        let res;
         try {
           // On annonce le dernier seq deja affiche : le serveur renvoie la suite.
           res = await socket
@@ -219,19 +607,19 @@
               depuisSeq: client.lastSeq,
             });
         } catch {
-          info(
-            "join " + salonId + " : pas de reponse du serveur en " + DELAI_ACK_MS + " ms",
-          );
+          info("pas de reponse du serveur en " + DELAI_ACK_MS + " ms", "attente");
           return;
         }
 
         if (!res.ok) {
-          info("join " + salonId + " REFUSE : " + res.raison);
+          info("acces refuse a " + salonId, "off");
           fil.innerHTML =
-            '<div class="msg refuse">acces refuse : ' + res.raison + "</div>";
+            '<div class="msg refuse">Acces refuse : ' + echapper(res.raison) + "</div>";
           presents = [];
           ecrivent.clear();
           renderPresence();
+          sel = salonId;
+          mark();
           return;
         }
 
@@ -248,80 +636,46 @@
         presents = res.presents || [];
         ecrivent.clear();
         for (const p of presents) if (p.saisit) marquerEcrit(p.membre);
-        info("connecte " + me + " - salon " + sel);
+        info("connecte", "on");
         mark();
         render();
         renderPresence();
       }
 
-      function ligneSysteme(texte) {
-        messages.push({ systeme: true, texte });
-        render();
-      }
-
-      fetch("/api/salons")
-        .then((r) => r.json())
-        .then((list) => {
-          document.getElementById("salons").innerHTML = list
-            .map(
-              (s) =>
-                `<button data-s="${s.id}">${s.nom}${s.prive ? " (prive)" : ""}</button>`,
-            )
-            .join("");
-          document.querySelectorAll("#salons button").forEach((b) => {
-            b.onclick = () => rejoindre(b.dataset.s);
-          });
-          mark();
-        });
-
-      function mark() {
-        document
-          .querySelectorAll("#salons button")
-          .forEach((b) => b.classList.toggle("sel", b.dataset.s === sel));
-      }
-
-      function render() {
-        fil.innerHTML = messages
-          .map((m) =>
-            m.systeme
-              ? `<div class="msg systeme">${m.texte}</div>`
-              : `<div class="msg"><span class="auteur">${m.auteur}</span> ${m.texte}</div>`,
-          )
-          .join("");
-        fil.scrollTop = fil.scrollHeight;
-      }
-
       // Emission throttlee : au plus un `typing` par seconde, meme en tapant vite.
       // Sans cela on saturerait le rate-limit de 15 messages/s a la premiere phrase.
       let dernierTyping = 0;
-      document.getElementById("t").addEventListener("input", () => {
+      $("t").addEventListener("input", () => {
         const t = Date.now();
         if (!socket || t - dernierTyping < 1000) return;
         dernierTyping = t;
         socket.emit("typing");
       });
 
-      document.getElementById("f").addEventListener("submit", (e) => {
+      $("f").addEventListener("submit", (e) => {
         e.preventDefault();
-        const t = document.getElementById("t");
-        if (!t.value || !socket) return;
-        const texte = t.value;
-        t.value = "";
+        const champ = $("t");
+        if (!champ.value || !socket) return;
+        const texte = champ.value;
+        champ.value = "";
         // Ack sur l'evenement metier : le serveur renvoie le seq qu'il a attribue.
         socket
           .timeout(DELAI_ACK_MS)
           .emitWithAck("message", { salonId: sel, texte })
           .then((res) => {
-            if (!res.ok) info("message refuse : " + res.raison);
+            if (!res.ok) info("message refuse : " + res.raison, "attente");
             else console.log("message confirme, seq =", res.seq);
           })
           .catch(() => {
             // Ni confirme ni refuse : le message est peut-etre passe. On le signale
             // plutot que de le renvoyer, un renvoi aveugle produirait un doublon
             // (c'est precisement ce que la deduplication de l'etape 6 traitera).
-            info("message non confirme apres " + DELAI_ACK_MS + " ms - etat incertain");
+            info("message non confirme - etat incertain", "attente");
           });
       });
+
+      render();
+      renderPresence();
     </script>
   </body>
 </html>
