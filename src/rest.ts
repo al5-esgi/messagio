@@ -42,6 +42,12 @@ export function registerRoutes(app: FastifyInstance, store: Store): void {
       .send(posterEtNotifier(store, salon, body.auteur, body.texte));
   });
 
+  /**
+   * Membres connus du seed. Alimente le selecteur d'identite du front de demonstration :
+   * on ne renvoie que les pseudos, aucune donnee sensible.
+   */
+  app.get("/api/membres", async () => store.membres.map((m) => m.pseudo));
+
   // --- Jeton de developpement (etape 3) ---------------------------------------
   // ATTENTION : cette route delivre un JWT a QUICONQUE le demande, sans authentifier
   // personne. Elle existe pour que le front de demonstration et `wscat` puissent

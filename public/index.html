@@ -151,11 +151,98 @@
       .moi {
         margin-top: auto;
         border-top: 1px solid var(--bord);
-        padding: 10px 14px;
+        padding: 8px;
+      }
+      #changer {
         display: flex;
         align-items: center;
         gap: 8px;
+        width: 100%;
+        font: inherit;
         font-size: 13px;
+        color: var(--texte);
+        background: none;
+        border: 0;
+        border-radius: 7px;
+        padding: 6px 8px;
+        cursor: pointer;
+        text-align: left;
+      }
+      #changer:hover { background: var(--fond); }
+      #changer .chevron { margin-left: auto; color: var(--tres-faible); font-size: 11px; }
+
+      dialog {
+        border: 1px solid var(--bord);
+        border-radius: var(--rayon);
+        background: var(--panneau);
+        color: var(--texte);
+        padding: 0;
+        width: min(340px, 92vw);
+        box-shadow: 0 12px 40px rgb(0 0 0 / 0.28);
+      }
+      dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+      dialog h2 {
+        margin: 0;
+        padding: 14px 16px 10px;
+        font-size: 14px;
+        font-weight: 650;
+      }
+      dialog p.sous {
+        margin: 0;
+        padding: 0 16px 12px;
+        font-size: 12px;
+        color: var(--faible);
+      }
+      .identites { padding: 0 8px 8px; display: flex; flex-direction: column; gap: 2px; }
+      .identites button {
+        display: flex;
+        align-items: center;
+        gap: 9px;
+        width: 100%;
+        font: inherit;
+        color: var(--texte);
+        background: none;
+        border: 0;
+        border-radius: 7px;
+        padding: 7px 9px;
+        cursor: pointer;
+        text-align: left;
+      }
+      .identites button:hover { background: var(--fond); }
+      .identites button[aria-current="true"] {
+        background: var(--accent-doux);
+        color: var(--accent);
+        font-weight: 600;
+      }
+      .identites .marque { margin-left: auto; font-size: 11px; color: var(--tres-faible); }
+      .libre {
+        display: flex;
+        gap: 6px;
+        padding: 10px 16px 14px;
+        border-top: 1px solid var(--bord);
+      }
+      .libre input {
+        flex: 1;
+        font: inherit;
+        font-size: 13px;
+        padding: 7px 10px;
+        border: 1px solid var(--bord);
+        border-radius: 7px;
+        background: var(--fond);
+        color: var(--texte);
+        min-width: 0;
+      }
+      .libre input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+      .libre button {
+        font: inherit;
+        font-weight: 600;
+        font-size: 13px;
+        padding: 7px 13px;
+        border: 0;
+        border-radius: 7px;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
       }
 
       /* ---------- fil ---------- */
@@ -332,8 +419,11 @@
         <div class="titre-colonne">Salons</div>
         <div id="salons"></div>
         <div class="moi">
-          <span class="avatar" id="mon-avatar"></span>
-          <span id="mon-nom"></span>
+          <button id="changer" title="Changer d'identite">
+            <span class="avatar" id="mon-avatar"></span>
+            <span id="mon-nom"></span>
+            <span class="chevron">changer</span>
+          </button>
         </div>
       </nav>
 
@@ -360,6 +450,19 @@
         </div>
       </aside>
     </div>
+
+    <dialog id="dlg-identite">
+      <h2>Se connecter en tant que</h2>
+      <p class="sous">
+        Simule une connexion : la page recharge avec cette identite, obtient un nouveau
+        JWT et rouvre la WebSocket. Le salon courant est conserve.
+      </p>
+      <div class="identites" id="identites"></div>
+      <form class="libre" id="f-libre">
+        <input id="pseudo-libre" placeholder="autre pseudo..." maxlength="32" autocomplete="off" />
+        <button>Ouvrir</button>
+      </form>
+    </dialog>
 
     <script src="/socket.io/socket.io.js"></script>
     <script type="module">
@@ -417,6 +520,47 @@
 
       $("mon-avatar").outerHTML = avatar(me);
       $("mon-nom").textContent = me;
+
+      // ---------- selecteur d'identite ----------
+      // Il n'y a pas de vraie authentification dans ce projet : `/api/dev-token` delivre
+      // un JWT a qui le demande (voir README). "Se connecter" revient donc a recharger la
+      // page avec un autre pseudo, qui deviendra le `sub` du jeton - et donc l'auteur des
+      // messages, puisque le serveur ignore le champ `auteur` envoye par le client.
+      function seConnecterEnTantQue(pseudo) {
+        const p = new URLSearchParams({ membre: pseudo, salon: sel });
+        location.search = p.toString();
+      }
+
+      const dlg = $("dlg-identite");
+      $("changer").onclick = () => dlg.showModal();
+      dlg.addEventListener("click", (e) => {
+        if (e.target === dlg) dlg.close(); // clic sur le fond
+      });
+
+      fetch("/api/membres")
+        .then((r) => r.json())
+        .then((membres) => {
+          const connus = membres.includes(me) ? membres : [...membres, me];
+          $("identites").innerHTML = connus
+            .map(
+              (m) => `<button data-m="${echapper(m)}" aria-current="${m === me}">
+                ${avatar(m)}
+                <span>${echapper(m)}</span>
+                ${m === me ? '<span class="marque">connecte</span>' : ""}
+              </button>`,
+            )
+            .join("");
+          for (const b of $("identites").querySelectorAll("button")) {
+            b.onclick = () => seConnecterEnTantQue(b.dataset.m);
+          }
+        })
+        .catch(() => {});
+
+      $("f-libre").addEventListener("submit", (e) => {
+        e.preventDefault();
+        const v = $("pseudo-libre").value.trim();
+        if (v) seConnecterEnTantQue(v);
+      });
 
       // ---------- rendu ----------
       function render() {

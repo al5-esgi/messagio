@@ -46,6 +46,8 @@ npm start          # http://localhost:3000
 | GET | `/api/salons` | liste des salons |
 | GET | `/api/salons/:id/messages?since=<seq>` | messages d'un salon depuis un numero de sequence |
 | POST | `/api/salons/:id/messages` | poste un message (`{ "auteur": "...", "texte": "..." }`) |
+| GET | `/api/membres` | pseudos du seed (alimente le selecteur d'identite du front) |
+| GET | `/api/dev-token?pseudo=` | JWT de developpement (voir plus bas) |
 | GET | `/api/stream` | flux SSE des notifications de salon (voir ci-dessous) |
 
 ### Canal SSE (etape 2)
@@ -73,7 +75,8 @@ sur l'evenement metier, rate-limiting a 15 messages/s. `ws-server.ts` (etape 3) 
 `naive-stub.ts` restent dans le depot comme points de comparaison.
 
 Le salon `dev` est **prive** (alice, bob) : il sert a demontrer le refus d'autorisation.
-Le front accepte `?membre=<pseudo>` et `?salon=<id>` pour ouvrir deux onglets distincts.
+Le front accepte `?membre=<pseudo>` et `?salon=<id>` pour ouvrir deux onglets distincts ;
+le bouton **changer** en bas a gauche fait la meme chose sans editer l'URL.
 
 La presence par salon, l'indicateur de saisie et le snapshot a la connexion sont en place
 (etape 5, `src/realtime/presence.ts`) : `npm run test:presence`.
