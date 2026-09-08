@@ -362,21 +362,64 @@
        * navigateur ne dit presque jamais laquelle. On traduit `e.name`, qui lui est normalise.
        */
       const DIAGNOSTIC = {
-        NotAllowedError:
-          "permission refusee. Deux niveaux a verifier : (1) le SITE dans le navigateur " +
-          "(icone camera dans la barre d'adresse, ou reglages du site pour localhost) ; " +
-          "(2) le NAVIGATEUR dans macOS : Reglages Systeme > Confidentialite et securite > " +
-          "Camera, et cocher l'application. Une autorisation accordee a Chrome ne vaut PAS " +
-          "pour Arc : ce sont deux applications distinctes pour macOS.",
-        NotFoundError: "aucune camera detectee par le navigateur.",
+        NotAllowedError: "permission refusee pour ce peripherique.",
+        NotFoundError: "aucun peripherique de ce type detecte.",
         NotReadableError:
-          "camera detectee mais illisible : elle est probablement deja occupee par une " +
-          "autre application (un autre navigateur avec un onglet actif, Zoom, Photo Booth...). " +
-          "Fermez l'onglet qui la retient et reessayez.",
-        OverconstrainedError: "aucune camera ne satisfait les contraintes demandees.",
+          "peripherique detecte mais illisible : il est probablement deja occupe par une " +
+          "autre application (autre navigateur, Zoom, Photo Booth...).",
+        OverconstrainedError: "aucun peripherique ne satisfait les contraintes demandees.",
         SecurityError: "contexte non securise ou bloque par la politique du navigateur.",
         AbortError: "le materiel a repondu par une erreur.",
       };
+
+      const gUM = (c) => navigator.mediaDevices.getUserMedia(c);
+
+      /**
+       * `getUserMedia({ video, audio })` est TOUT OU RIEN : si une seule des deux
+       * permissions manque, l'appel entier echoue en NotAllowedError sans dire laquelle.
+       * Camera et microphone sont deux permissions distinctes, cote site comme cote macOS.
+       * On reessaie donc separement pour identifier le coupable, et on se rabat sur ce qui
+       * marche - une visio sans micro reste une visio.
+       */
+      async function obtenirMedia() {
+        try {
+          return { flux: await gUM({ video: true, audio: true }), mode: "camera + micro" };
+        } catch (e) {
+          if (e.name !== "NotAllowedError" && e.name !== "NotFoundError") throw e;
+          log(`video+audio refuse [${e.name}] -> on teste chaque peripherique`, "sig");
+        }
+
+        let video = null;
+        let erreurVideo = null;
+        try {
+          video = await gUM({ video: true });
+        } catch (e) {
+          erreurVideo = e.name;
+        }
+
+        let audioOk = false;
+        try {
+          const a = await gUM({ audio: true });
+          audioOk = true;
+          for (const p of a.getTracks()) p.stop(); // on ne garde pas ce flux de test
+        } catch (e) {
+          log(`micro refuse [${e.name}] : ${DIAGNOSTIC[e.name] ?? e.name}`, "err");
+        }
+
+        if (video) {
+          log(
+            audioOk
+              ? "les deux marchent separement : reessayez, la demande combinee a du etre annulee"
+              : "camera OK, micro refuse -> on continue en VIDEO SEULE",
+            audioOk ? "sig" : "rec",
+          );
+          return { flux: video, mode: audioOk ? "camera" : "camera (sans micro)" };
+        }
+
+        throw new Error(
+          `camera refusee [${erreurVideo}] : ${DIAGNOSTIC[erreurVideo] ?? erreurVideo}`,
+        );
+      }
 
       $("b-camera").onclick = async () => {
         // `navigator.mediaDevices` n'existe QUE dans un contexte securise : HTTPS, ou
@@ -392,40 +435,55 @@
           return;
         }
 
+        await diagnostiquer();
         try {
-          fluxLocal = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          const { flux, mode } = await obtenirMedia();
+          fluxLocal = flux;
           $("v-local").srcObject = fluxLocal;
           for (const piste of fluxLocal.getTracks()) pc.addTrack(piste, fluxLocal);
-          log("camera et micro ajoutes -> renegociation", "rec");
+          log(`${mode} ajoute(s) -> renegociation`, "rec");
           $("b-camera").disabled = true;
           $("b-couper").disabled = false;
         } catch (e) {
-          log(`camera indisponible [${e.name}] : ${DIAGNOSTIC[e.name] ?? e.message}`, "err");
-          await diagnostiquer();
+          log(e.message, "err");
+          log(
+            "Si l'etat de permission est `granted` et que ca refuse quand meme, le blocage " +
+              "vient de macOS : Reglages Systeme > Confidentialite et securite > Camera ET " +
+              "Microphone (deux entrees distinctes). Cocher l'application, puis la QUITTER " +
+              "completement (Cmd+Q) et la relancer : le changement n'est pris en compte qu'au " +
+              "redemarrage du processus.",
+            "err",
+          );
         }
       };
 
-      /** Complement de diagnostic : etat de la permission et materiel visible. */
+      /** Complement de diagnostic : origine, permissions, materiel visible. */
       async function diagnostiquer() {
         // L'origine INCLUT LE PORT : localhost:3000, :3001 et :19001 sont trois sites
         // distincts pour le navigateur. Une autorisation donnee sur l'un ne vaut pas
         // pour les autres - piege facile ici, ou la pile expose quatre ports.
-        log("origine demandant la camera : " + location.origin, "sig");
-        try {
-          const p = await navigator.permissions?.query({ name: "camera" });
-          // `denied` vient du navigateur pour CETTE origine : c'est un blocage
-          // memorise cote site, pas le reglage macOS (qui, lui, n'est pas interrogeable ici).
-          if (p) log("etat de la permission camera (ce site) : " + p.state, "sig");
-        } catch {
-          log("ce navigateur n'expose pas l'etat de la permission camera", "sig");
+        log("origine demandant les medias : " + location.origin, "sig");
+
+        // Deux permissions DISTINCTES : verifier les deux, puisqu'on demande les deux.
+        for (const nom of ["camera", "microphone"]) {
+          try {
+            const p = await navigator.permissions?.query({ name: nom });
+            // `denied` vient du navigateur pour CETTE origine : c'est un blocage memorise
+            // cote site, pas le reglage macOS (qui, lui, n'est pas interrogeable ici).
+            if (p) log(`permission ${nom} (ce site) : ${p.state}`, "sig");
+          } catch {
+            log(`ce navigateur n'expose pas l'etat de la permission ${nom}`, "sig");
+          }
         }
+
         try {
           const appareils = await navigator.mediaDevices.enumerateDevices();
           const cams = appareils.filter((d) => d.kind === "videoinput");
-          log(`cameras vues par le navigateur : ${cams.length}`, "sig");
+          const micros = appareils.filter((d) => d.kind === "audioinput");
+          log(`peripheriques vus : ${cams.length} camera(s), ${micros.length} micro(s)`, "sig");
           // Sans permission accordee, les libelles sont vides : c'est en soi un indice.
           if (cams.length && !cams[0].label) {
-            log("libelles vides -> la permission n'a jamais ete accordee a ce navigateur", "sig");
+            log("libelles vides -> permission jamais accordee a ce navigateur", "sig");
           }
         } catch (e) {
           log("enumerateDevices a echoue : " + e.message, "err");

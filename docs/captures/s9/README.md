@@ -76,7 +76,8 @@ cameras vues. Les trois causes courantes :
 
 | Journal | Cause | Correctif |
 |---|---|---|
-| `[NotAllowedError]` + `permission : denied` + libelles vides | le navigateur n'a jamais eu l'autorisation | macOS > Reglages Systeme > Confidentialite et securite > **Camera** : cocher CE navigateur. L'autorisation est **par application** : Chrome autorise n'implique pas Arc autorise. Puis, dans le navigateur, reglages du site pour `localhost` : passer Camera sur *Autoriser*. |
+| `[NotAllowedError]` alors que `permission camera : granted` | **le MICRO est refuse**, pas la camera | `getUserMedia({ video, audio })` est tout ou rien : une seule permission manquante fait echouer l'appel entier. Camera et micro sont **deux permissions distinctes**, cote site comme cote macOS. Autoriser aussi le microphone. |
+| `[NotAllowedError]` + `denied` + libelles vides | le navigateur n'a jamais eu l'autorisation pour cette origine | reglages du site pour `localhost:<port>` : passer Camera **et** Microphone sur *Autoriser*. L'origine inclut le port. Verifier aussi macOS > Reglages Systeme > Confidentialite et securite > Camera **et** Microphone : l'autorisation est **par application**, Chrome autorise n'implique pas Arc autorise, et il faut quitter l'application (Cmd+Q) pour que le changement prenne. |
 | `[NotReadableError]` | camera detectee mais deja prise par une autre application | fermer l'autre navigateur / Zoom / Photo Booth qui la retient, puis reessayer |
 | `API media indisponible : contexte non securise` | page ouverte via une IP de reseau local | `navigator.mediaDevices` n'existe qu'en HTTPS ou sur `http://localhost`. Ouvrir la page sur `localhost`. |
 
