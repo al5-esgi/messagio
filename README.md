@@ -97,7 +97,12 @@ curl -s localhost:3002/metrics | grep ws_active_connections   # instance B
 
 Releve de charge et interpretation : `docs/captures/s7/releve-de-charge.md`.
 
-Reste a faire : le signaling WebRTC et la visio (etape 8).
+Le signaling WebRTC est en place (etape 8) : `public/appel.html` ouvre un `RTCDataChannel`
+entre deux navigateurs, le serveur ne faisant que relayer `offer` / `answer` / `ice`.
+
+Chaos reseau (etape 9) : `bash chaos.sh` injecte 200 ms de latence puis une coupure de 5 s
+devant la pile ; pointez le navigateur sur `http://localhost:19001`. Mesures et interpretation
+dans `docs/rapport-chaos.md`.
 `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication : `npm run scenario`.
 
 Le canal SSE de l'etape 2 (`GET /api/stream`) reste disponible pour un client en lecture seule.

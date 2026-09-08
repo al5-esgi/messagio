@@ -91,6 +91,8 @@
       .pastille.on { background: var(--ok); }
       .pastille.off { background: var(--erreur); }
       .pastille.attente { background: var(--alerte); }
+      .lien-appel { text-decoration: none; }
+      .lien-appel:hover { filter: brightness(0.94); }
       .etiquette {
         font-size: 11px;
         font-weight: 600;
@@ -397,6 +399,7 @@
       <header class="panneau">
         <h1>Chat multi-salons</h1>
         <span class="etiquette" id="instance" hidden></span>
+        <a class="etiquette lien-appel" id="lien-appel" href="/appel.html">appel P2P</a>
         <div class="etat">
           <span class="pastille" id="pastille"></span>
           <span id="status">connexion...</span>
@@ -505,6 +508,10 @@
         $("status").textContent = texte;
         $("pastille").className = "pastille " + classe;
       }
+
+      // Le lien vers la page d'appel conserve identite et salon courants.
+      $("lien-appel").href =
+        "/appel.html?" + new URLSearchParams({ membre: me, salon: sel });
 
       $("mon-avatar").outerHTML = avatar(me);
       $("mon-nom").textContent = me;

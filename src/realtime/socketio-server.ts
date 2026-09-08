@@ -29,6 +29,9 @@ import {
 //  Etape 6 : resynchronisation par numero de sequence. Le `join` accepte un `depuisSeq` ;
 //  le serveur renvoie tout ce qui a suivi, et le client deduplique (`SalonClient`).
 //
+//  Etape 8 : relais de signaling WebRTC (offer / answer / ice). Le serveur ne voit
+//  JAMAIS le flux P2P : il ne transporte que de quoi etablir la connexion directe.
+//
 //  Ce qui reste a faire :
 //   - plusieurs instances                                                (etape 7)
 //   - signaling WebRTC                                                   (etape 8)
@@ -45,6 +48,12 @@ const ORIGINES_AUTORISEES = (
 /** Convention de room du sujet : un salon = une room. */
 export const roomDuSalon = (salonId: string) => `salon:${salonId}`;
 
+/** Room de signaling d'un salon : distincte de la room de discussion (etape 8). */
+export const roomDAppel = (salonId: string) => `appel:${salonId}`;
+
+/** Un appel est un tete-a-tete : au-dela, il faudrait un SFU. */
+const PARTICIPANTS_MAX = 2;
+
 /** L'inverse : `salon:dev` -> `dev`, et `null` si ce n'est pas une room de salon. */
 function salonDeLaRoom(room: string): string | null {
   return room.startsWith("salon:") ? room.slice("salon:".length) : null;
@@ -59,7 +68,10 @@ function salonDeLaRoom(room: string): string | null {
  * circulaire : `JSON.stringify` leve, et l'instance interrogee tombe. Le limiteur est
  * donc garde a part, dans une Map locale.
  */
-interface DonneesSocket extends DonneesPresence {}
+interface DonneesSocket extends DonneesPresence {
+  /** Room de signaling rejointe, le cas echeant. Serialisable : c'est une chaine. */
+  appel?: string;
+}
 
 type SocketChat = Socket & { data: DonneesSocket };
 
@@ -72,6 +84,13 @@ export interface ResultatJoin {
   presents?: PresenceVue[];
   /** Dernier seq connu du salon : permet au client de detecter un trou (etape 6). */
   dernierSeq?: number;
+}
+
+export interface ResultatAppel {
+  ok: boolean;
+  raison?: string;
+  /** Vrai si quelqu'un attend deja : c'est alors a nous d'emettre l'offre. */
+  pairPresent?: boolean;
 }
 
 export interface OptionsJoin {
@@ -160,6 +179,11 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
     socket.on("disconnecting", () => {
       for (const room of [...socket.rooms]) {
         if (salonDeLaRoom(room)) quitterRoom(socket, room);
+      }
+      // Un appel en cours : le pair doit le savoir tout de suite, sans delai de grace.
+      // Un canal P2P rompu ne se repare pas tout seul, il faut renegocier.
+      if (socket.data.appel) {
+        socket.to(socket.data.appel).emit("appel:pair-parti", { membre });
       }
     });
 
@@ -252,6 +276,62 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
         console.error("[join] echec :", err);
         ack?.({ ok: false, raison: "erreur serveur, reessayez" });
       }
+    });
+
+    // --- signaling WebRTC (etape 8) -------------------------------------------
+    // Le serveur RELAIE, il ne participe pas. Une fois le canal ouvert, les donnees
+    // passent directement d'un navigateur a l'autre : ni le serveur ni Redis ne les voient.
+    // C'est exactement ce que l'ADR-1 refusait pour le flux principal (pas d'autorite
+    // centrale, donc pas de `seq` ni d'historique) et qui devient un atout pour un
+    // tete-a-tete : moins de latence, et le contenu ne transite par aucun tiers.
+    socket.on(
+      "appel:rejoindre",
+      async (salonId: string, ack?: (r: ResultatAppel) => void) => {
+        try {
+          // Meme regle d'autorisation que le salon : on n'appelle que dans un salon
+          // auquel on a droit. Sans cela, la room d'appel serait une porte derobee.
+          const verdict = roomAutorisee(membre, roomDuSalon(salonId));
+          if (!verdict.ok) {
+            ack?.({ ok: false, raison: verdict.raison });
+            return;
+          }
+
+          const room = roomDAppel(salonId);
+          const presents = await io.in(room).fetchSockets();
+          if (presents.length >= PARTICIPANTS_MAX) {
+            ack?.({ ok: false, raison: "appel deja complet (2 participants)" });
+            return;
+          }
+
+          socket.join(room);
+          socket.data.appel = room;
+          ack?.({ ok: true, pairPresent: presents.length === 1 });
+          // Le premier arrive apprend qu'un pair est la : c'est lui qui emettra l'offre.
+          if (presents.length === 1)
+            socket.to(room).emit("appel:pair-pret", { membre });
+        } catch (err) {
+          console.error("[appel:rejoindre] echec :", err);
+          ack?.({ ok: false, raison: "erreur serveur" });
+        }
+      },
+    );
+
+    // Relais opaque : le serveur ne lit ni ne valide le contenu SDP / ICE, il le
+    // transmet a l'autre participant. `socket.to()` exclut l'emetteur.
+    for (const type of ["appel:offer", "appel:answer", "appel:ice"] as const) {
+      socket.on(type, (charge: unknown) => {
+        if (!limiteur.hit()) return;
+        const room = socket.data.appel;
+        if (room) socket.to(room).emit(type, charge);
+      });
+    }
+
+    socket.on("appel:quitter", () => {
+      const room = socket.data.appel;
+      if (!room) return;
+      socket.to(room).emit("appel:pair-parti", { membre });
+      socket.leave(room);
+      socket.data.appel = undefined;
     });
 
     // --- evenement metier, confirme par ack -----------------------------------

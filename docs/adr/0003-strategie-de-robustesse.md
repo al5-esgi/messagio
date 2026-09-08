@@ -1,7 +1,7 @@
 # ADR-3 : strategie de robustesse
 
 ## Statut
-**Propose** (amorce etape 7). A accepter a l'etape 9, apres le chaos reseau du TP WebRTC.
+**Accepte** (etape 9), apres mesure sous chaos reseau. Amorce a l'etape 7.
 
 ## Contexte
 
@@ -77,5 +77,16 @@ retour supplementaire a la reconnexion. Cote infrastructure, Redis et un proxy s
 - **La presence est une vue, pas une verite.** En cas d'instance injoignable, la liste des
   presents est temporairement incomplete. C'est un choix : la presence est une information de
   confort, la disponibilite du chat ne doit pas en dependre.
-- **Le chaos reseau n'a pas encore ete pratique** : c'est l'objet de l'etape 8, qui confirmera
-  ou infirmera cette decision.
+- **Le chaos reseau a confirme la decision** (voir `docs/rapport-chaos.md`). Sous coupure de
+  5 s avec 4 messages perdus, tout se retablit sans intervention en **3310 ms**. Le fait
+  marquant est la repartition de ce delai : **3301 ms pour reconnecter, 9 ms pour
+  resynchroniser**. Le rattrapage par `seq` ne coute donc rien ; le cout est entierement dans
+  la detection du retour reseau, c'est-a-dire dans le backoff de Socket.IO. Cela renforce la
+  decision : la robustesse tient au couple reconnexion + resync, et le seul reglage qui
+  deplacerait l'aiguille est `reconnectionDelayMax`, pas la strategie de convergence.
+
+- **Le canal P2P de l'etape 9 ne beneficie d'aucune de ces garanties**, et c'est assume. Un
+  `RTCDataChannel` rompu ne se repare pas tout seul : il faut renegocier. C'est precisement
+  l'argument de l'ADR-1 contre WebRTC pour le flux principal — pas d'autorite centrale, donc
+  ni `seq`, ni historique, ni rattrapage. Le serveur previent immediatement le pair
+  (`appel:pair-parti`, sans delai de grace) pour qu'il ne reste pas devant un canal mort.

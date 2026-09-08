@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Appel P2P - Chat multi-salons</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --fond: #f4f6f9;
+        --panneau: #ffffff;
+        --bord: #d8dde6;
+        --texte: #14171c;
+        --faible: #4b5563;
+        --tres-faible: #6b7280;
+        --accent: #4338ca;
+        --accent-doux: #e8eaff;
+        --ok: #15803d;
+        --alerte: #b45309;
+        --erreur: #b91c1c;
+        --rayon: 10px;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 16px;
+        background: var(--fond);
+        color: var(--texte);
+        font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+      }
+      main { max-width: 900px; margin: 0 auto; display: grid; gap: 12px; }
+      .panneau {
+        background: var(--panneau);
+        border: 1px solid var(--bord);
+        border-radius: var(--rayon);
+        padding: 14px 16px;
+      }
+      header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+      h1 { font-size: 15px; margin: 0; font-weight: 650; }
+      .lien { font-size: 12.5px; color: var(--accent); text-decoration: none; }
+      .etat { margin-left: auto; display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--faible); }
+      .pastille { width: 8px; height: 8px; border-radius: 50%; background: var(--tres-faible); }
+      .pastille.on { background: var(--ok); }
+      .pastille.off { background: var(--erreur); }
+      .pastille.attente { background: var(--alerte); }
+      h2 {
+        font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em;
+        color: var(--tres-faible); font-weight: 650; margin: 0 0 10px;
+      }
+      .rangee { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+      button {
+        font: inherit; font-weight: 600; font-size: 13px; padding: 8px 14px;
+        border: 1px solid var(--bord); border-radius: 8px;
+        background: var(--panneau); color: var(--texte); cursor: pointer;
+      }
+      button.primaire { background: var(--accent); color: #fff; border-color: var(--accent); }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+      input, select {
+        font: inherit; font-size: 13px; padding: 8px 11px;
+        border: 1px solid var(--bord); border-radius: 8px;
+        background: var(--fond); color: var(--texte);
+      }
+      #texte { flex: 1; min-width: 160px; }
+      .videos { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+      .video-case { position: relative; background: #0d1117; border-radius: 8px; overflow: hidden; aspect-ratio: 4/3; }
+      video { width: 100%; height: 100%; object-fit: cover; display: block; }
+      .video-case span {
+        position: absolute; left: 8px; bottom: 6px; font-size: 11px; font-weight: 600;
+        color: #fff; background: rgb(0 0 0 / 0.5); padding: 2px 7px; border-radius: 5px;
+      }
+      #journal {
+        height: 230px; overflow-y: auto; background: var(--fond);
+        border: 1px solid var(--bord); border-radius: 8px; padding: 10px;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+      }
+      .ligne { padding: 1px 0; display: flex; gap: 9px; }
+      .t { color: var(--tres-faible); flex-shrink: 0; }
+      .env { color: var(--accent); }
+      .rec { color: var(--ok); }
+      .sig { color: var(--faible); }
+      .err { color: var(--erreur); }
+      .ice { color: #7c3aed; }
+      .note { color: var(--faible); font-size: 12px; margin: 8px 0 0; }
+      code { background: var(--fond); border: 1px solid var(--bord); border-radius: 4px; padding: 0 4px; font-size: 12px; }
+      @media (max-width: 640px) { .videos { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header class="panneau">
+        <h1>Appel P2P</h1>
+        <a class="lien" href="/">&larr; retour au chat</a>
+        <div class="etat">
+          <span class="pastille" id="pastille-sig"></span><span id="etat-sig">signaling...</span>
+          <span class="pastille" id="pastille-p2p" style="margin-left:10px"></span><span id="etat-p2p">P2P ferme</span>
+        </div>
+      </header>
+
+      <section class="panneau">
+        <h2>1. Rejoindre l'appel</h2>
+        <div class="rangee">
+          <select id="salon"></select>
+          <button class="primaire" id="b-rejoindre">Rejoindre</button>
+          <button id="b-quitter" disabled>Quitter</button>
+        </div>
+        <p class="note">
+          L'appel se fait dans un salon auquel vous avez droit : la meme regle
+          d'autorisation que la room de discussion. Ouvrez cette page dans
+          <strong>2 fenetres</strong> avec des identites differentes
+          (<code>?membre=alice</code> / <code>?membre=bob</code>).
+        </p>
+      </section>
+
+      <section class="panneau">
+        <h2>2. Message direct (RTCDataChannel)</h2>
+        <form class="rangee" id="f">
+          <input id="texte" value="message direct, sans passer par le serveur" />
+          <button class="primaire" id="b-envoyer" disabled>Envoyer en P2P</button>
+        </form>
+        <p class="note">
+          Une fois le canal ouvert, ce message ne transite <strong>ni par le serveur ni par
+          Redis</strong> : il va directement d'un navigateur a l'autre.
+        </p>
+      </section>
+
+      <section class="panneau">
+        <h2>3. Visio (optionnel)</h2>
+        <div class="rangee">
+          <button id="b-camera" disabled>Activer camera + micro</button>
+          <button id="b-couper" disabled>Couper</button>
+        </div>
+        <div class="videos" style="margin-top:10px">
+          <div class="video-case"><video id="v-local" autoplay muted playsinline></video><span>vous</span></div>
+          <div class="video-case"><video id="v-distant" autoplay playsinline></video><span>pair</span></div>
+        </div>
+        <p class="note">
+          Necessite une camera et un contexte securise (<code>localhost</code> ou HTTPS).
+          Renegocie la connexion : un <code>appel:offer</code> repart apres l'ajout des pistes.
+        </p>
+      </section>
+
+      <section class="panneau">
+        <h2>Journal</h2>
+        <div id="journal"></div>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script type="module">
+      // Etape 8 : WebRTC. Le serveur ne fait que RELAYER offer / answer / ice.
+      // Une fois `pc.connectionState === "connected"`, les donnees ne passent plus par lui.
+      const $ = (id) => document.getElementById(id);
+      const params = new URLSearchParams(location.search);
+      const me = params.get("membre") || "u" + Math.floor(Math.random() * 1000);
+      let salonChoisi = params.get("salon") || "general";
+
+      let socket = null;
+      let pc = null;
+      let canal = null;
+      let fluxLocal = null;
+      let poli = false;          // celui qui a trouve un pair present emet l'offre
+      let enNegociation = false; // garde-fou contre deux offres simultanees
+
+      const echapper = (s) =>
+        String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+
+      function log(texte, classe = "") {
+        const l = document.createElement("div");
+        l.className = "ligne";
+        l.innerHTML = `<span class="t">${new Date().toLocaleTimeString("fr-FR", { hour12: false })}</span><span class="${classe}"></span>`;
+        l.lastChild.textContent = texte;
+        $("journal").append(l);
+        $("journal").scrollTop = $("journal").scrollHeight;
+      }
+      const etat = (id, pid, texte, classe) => {
+        $(id).textContent = texte;
+        $(pid).className = "pastille " + (classe || "");
+      };
+
+      // ---------- signaling ----------
+      fetch("/api/salons").then((r) => r.json()).then((list) => {
+        $("salon").innerHTML = list
+          .map((s) => `<option value="${s.id}"${s.id === salonChoisi ? " selected" : ""}>#${echapper(s.nom)}${s.prive ? " (prive)" : ""}</option>`)
+          .join("");
+      });
+
+      fetch("/api/dev-token?pseudo=" + encodeURIComponent(me))
+        .then((r) => r.json())
+        .then(({ token }) => {
+          socket = io({ auth: { token } });
+          window.socket = socket;
+          window.pc = () => pc;
+
+          socket.on("connect", () => {
+            etat("etat-sig", "pastille-sig", "signaling connecte (" + me + ")", "on");
+            log("signaling pret, identite " + me, "sig");
+          });
+          socket.on("connect_error", (e) => etat("etat-sig", "pastille-sig", "refuse : " + e.message, "off"));
+          socket.on("disconnect", () => etat("etat-sig", "pastille-sig", "signaling deconnecte", "off"));
+
+          // Un pair vient d'arriver : c'est a nous d'emettre l'offre.
+          // Le premier arrive apprend qu'un second est la. C'est LUI qui offre :
+          // il a deja sa RTCPeerConnection prete depuis son "Rejoindre".
+          socket.on("appel:pair-pret", ({ membre }) => {
+            log("pair present : " + membre + " -> j'emets l'offre", "sig");
+            poli = true;
+            demarrerOffre();
+          });
+
+          socket.on("appel:offer", async (offre) => {
+            log("offre recue -> je reponds", "sig");
+            if (!pc) creerPeer();
+            await pc.setRemoteDescription(offre);
+            await pc.setLocalDescription(await pc.createAnswer());
+            socket.emit("appel:answer", pc.localDescription);
+          });
+
+          socket.on("appel:answer", async (reponse) => {
+            log("reponse recue", "sig");
+            if (pc && pc.signalingState !== "stable") await pc.setRemoteDescription(reponse);
+          });
+
+          socket.on("appel:ice", async (candidat) => {
+            try {
+              if (pc && candidat) await pc.addIceCandidate(candidat);
+            } catch (e) {
+              log("candidat ICE distant rejete : " + e.message, "err");
+            }
+          });
+
+          socket.on("appel:pair-parti", ({ membre }) => {
+            log("le pair " + membre + " a quitte l'appel", "sig");
+            fermerP2P();
+          });
+        });
+
+      // ---------- WebRTC ----------
+      function creerPeer() {
+        // STUN seulement : suffit tant que les deux pairs peuvent se joindre en direct.
+        // Derriere un NAT symetrique il faudrait un TURN, qui relaie le flux - et donc
+        // reintroduit un tiers, ce que le P2P cherchait a eviter.
+        pc = new RTCPeerConnection({
+          iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        });
+
+        pc.onicecandidate = (e) => {
+          if (!e.candidate) return log("collecte ICE terminee", "ice");
+          const c = e.candidate.candidate;
+          const type = /typ (\w+)/.exec(c)?.[1] ?? "?";
+          log(`ICE local (typ ${type}) : ${c}`, "ice");
+          socket.emit("appel:ice", e.candidate.toJSON());
+        };
+
+        pc.onconnectionstatechange = () => {
+          const s = pc.connectionState;
+          log("connexion P2P : " + s, s === "failed" ? "err" : "sig");
+          if (s === "connected") etat("etat-p2p", "pastille-p2p", "P2P connecte", "on");
+          if (s === "disconnected" || s === "failed") etat("etat-p2p", "pastille-p2p", "P2P " + s, "off");
+        };
+
+        pc.ondatachannel = (e) => brancherCanal(e.channel);
+        pc.ontrack = (e) => {
+          $("v-distant").srcObject = e.streams[0];
+          log("piste distante recue : " + e.track.kind, "rec");
+        };
+
+        // UNIQUE endroit qui emet une offre. `createDataChannel` et `addTrack` declenchent
+        // tous deux cet evenement : si on emettait aussi une offre a la main, les deux
+        // negociations entreraient en collision ("m-lines order doesn't match").
+        // Seul l'appelant (`poli`) offre ; l'autre repond, ce qui evite le glare.
+        pc.onnegotiationneeded = async () => {
+          if (!poli || !socket || enNegociation) return;
+          if (pc.signalingState !== "stable") return;
+          enNegociation = true;
+          try {
+            await pc.setLocalDescription(await pc.createOffer());
+            socket.emit("appel:offer", pc.localDescription);
+            log("offre emise", "sig");
+          } catch (e) {
+            log("negociation impossible : " + e.message, "err");
+          } finally {
+            enNegociation = false;
+          }
+        };
+        return pc;
+      }
+
+      function brancherCanal(c) {
+        canal = c;
+        canal.onopen = () => {
+          log("canal de donnees OUVERT - les messages ne passent plus par le serveur", "rec");
+          $("b-envoyer").disabled = false;
+          $("b-camera").disabled = false;
+        };
+        canal.onclose = () => {
+          log("canal de donnees ferme", "sig");
+          $("b-envoyer").disabled = true;
+        };
+        canal.onmessage = (e) => log("<- " + e.data, "rec");
+      }
+
+      /**
+       * Ouvre le canal de donnees. On n'emet PAS l'offre ici : `createDataChannel`
+       * declenche `onnegotiationneeded`, qui s'en charge. Un seul chemin, pas de collision.
+       */
+      function demarrerOffre() {
+        if (!pc) creerPeer();
+        brancherCanal(pc.createDataChannel("chat-direct"));
+      }
+
+      function fermerP2P() {
+        canal?.close();
+        pc?.close();
+        pc = null;
+        canal = null;
+        $("b-envoyer").disabled = true;
+        $("b-camera").disabled = true;
+        etat("etat-p2p", "pastille-p2p", "P2P ferme", "");
+      }
+
+      // ---------- commandes ----------
+      $("salon").onchange = (e) => (salonChoisi = e.target.value);
+
+      $("b-rejoindre").onclick = async () => {
+        const res = await socket.timeout(5000).emitWithAck("appel:rejoindre", salonChoisi);
+        if (!res.ok) {
+          log("rejoindre refuse : " + res.raison, "err");
+          etat("etat-p2p", "pastille-p2p", "refuse", "off");
+          return;
+        }
+        $("b-rejoindre").disabled = true;
+        $("b-quitter").disabled = false;
+        creerPeer();
+        if (res.pairPresent) {
+          // Nous sommes le second : le premier vient de recevoir `appel:pair-pret`
+          // et va nous envoyer son offre. On se contente de repondre.
+          log("un pair attend deja -> j'attends son offre", "sig");
+          etat("etat-p2p", "pastille-p2p", "negociation...", "attente");
+        } else {
+          log("en attente d'un second participant sur #" + salonChoisi, "sig");
+          etat("etat-p2p", "pastille-p2p", "en attente d'un pair", "attente");
+        }
+      };
+
+      $("b-quitter").onclick = () => {
+        socket.emit("appel:quitter");
+        fermerP2P();
+        $("b-rejoindre").disabled = false;
+        $("b-quitter").disabled = true;
+      };
+
+      $("f").addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (canal?.readyState !== "open") return;
+        const t = $("texte").value;
+        canal.send(`${me}: ${t}`);
+        log("-> " + t, "env");
+      });
+
+      $("b-camera").onclick = async () => {
+        try {
+          fluxLocal = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          $("v-local").srcObject = fluxLocal;
+          for (const piste of fluxLocal.getTracks()) pc.addTrack(piste, fluxLocal);
+          log("camera et micro ajoutes -> renegociation", "rec");
+          $("b-camera").disabled = true;
+          $("b-couper").disabled = false;
+        } catch (e) {
+          log("camera indisponible : " + e.message, "err");
+        }
+      };
+
+      $("b-couper").onclick = () => {
+        for (const p of fluxLocal?.getTracks() ?? []) p.stop();
+        $("v-local").srcObject = null;
+        fluxLocal = null;
+        $("b-camera").disabled = false;
+        $("b-couper").disabled = true;
+        log("flux local coupe", "sig");
+      };
+
+      log("page prete. Ouvrez-la dans 2 fenetres avec ?membre= different.", "sig");
+    </script>
+  </body>
+</html>

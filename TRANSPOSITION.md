@@ -28,7 +28,7 @@ Les ADR correspondants : `docs/adr/0001` (etape 2, acceptee etape 4), `docs/adr/
 | 5 - presence + `typing` + snapshot | fait | `src/realtime/presence.ts` |
 | 6 - deduplication a la reconnexion | fait | `convergence.exemple.ts` branche, `public/salon-client.js` |
 | 7 - adaptateur Redis + presence distribuee | fait | `src/realtime/scaling.ts`, `docker-compose.yml` |
-| 8 - signaling WebRTC + visio | a faire | |
+| 8 - signaling WebRTC + visio | fait | relais dans `socketio-server.ts`, `public/appel.html` |
 
 Tranches du stub desormais remplacees : la diffusion « push tout a tout le monde » (rooms,
 etape 4), l'absence de securite au handshake (etape 3), l'absence de presence et de signal
@@ -43,7 +43,12 @@ La presence est distribuee : elle est calculee par `fetchSockets()`, que l'adapt
 interroge sur toutes les instances. Deux clients repartis par le proxy se voient, s'ecrivent
 et voient leurs signaux de saisie (`docs/captures/s7/`).
 
-Reste le signaling WebRTC et la visio pair a pair (etape 8).
+Le signaling WebRTC est relaye par le serveur (`appel:offer` / `appel:answer` / `appel:ice`),
+avec la meme regle d'autorisation que les salons. Le `RTCDataChannel` est verifie entre deux
+navigateurs : une fois ouvert, les messages ne transitent plus par le serveur.
+
+Toutes les tranches du stub sont remplacees. Le comportement sous chaos reseau est mesure
+dans `docs/rapport-chaos.md`.
 
 ## Code fourni pour vous aider
 
