@@ -19,8 +19,10 @@ import { Presences, type PresenceVue } from "./presence.ts";
 //
 //  Etape 5 : presence par salon, signal ephemere `typing`, snapshot dans l'ack du join.
 //
+//  Etape 6 : resynchronisation par numero de sequence. Le `join` accepte un `depuisSeq` ;
+//  le serveur renvoie tout ce qui a suivi, et le client deduplique (`SalonClient`).
+//
 //  Ce qui reste a faire :
-//   - deduplication a la reconnexion                                     (etape 6)
 //   - plusieurs instances                                                (etape 7)
 //   - signaling WebRTC                                                   (etape 8)
 // ============================================================================
@@ -55,6 +57,17 @@ export interface ResultatJoin {
   messages?: unknown[];
   /** Qui est deja la, et qui est en train d'ecrire (etape 5). */
   presents?: PresenceVue[];
+  /** Dernier seq connu du salon : permet au client de detecter un trou (etape 6). */
+  dernierSeq?: number;
+}
+
+export interface OptionsJoin {
+  /**
+   * Dernier `seq` deja affiche par le client. A la reconnexion il le transmet et le
+   * serveur renvoie TOUT ce qui a suivi, au lieu des 30 derniers messages. Le
+   * chevauchement eventuel est absorbe par la deduplication cliente (etape 6).
+   */
+  depuisSeq?: number;
 }
 
 export interface ResultatMessage {
@@ -143,7 +156,15 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
     });
 
     // --- join : la decision d'autorisation est portee par l'ACK, pas par un evenement separe.
-    socket.on("join", (room: string, ack?: (r: ResultatJoin) => void) => {
+    // Signature souple : `join(room, ack)` (etape 4) ou `join(room, options, ack)` (etape 6).
+    socket.on("join", (room: string, ...reste: unknown[]) => {
+      const ack = reste.find((a) => typeof a === "function") as
+        | ((r: ResultatJoin) => void)
+        | undefined;
+      const options = (reste.find(
+        (a) => a !== null && typeof a === "object",
+      ) ?? {}) as OptionsJoin;
+
       const verdict = roomAutorisee(membre, room);
       if (!verdict.ok) {
         ack?.({ ok: false, raison: verdict.raison });
@@ -163,10 +184,23 @@ export function demarrerSocketIo(httpServer: HttpServer, store: Store): Server {
 
       // Le snapshot part dans l'ack : l'arrivant voit l'etat courant immediatement,
       // sans attendre que quelqu'un d'autre bouge.
+      //
+      // Etape 6 : si le client annonce un `depuisSeq`, on renvoie tout ce qui a suivi
+      // plutot que les 30 derniers messages - c'est la resynchronisation apres coupure.
+      // On ne cherche pas a eviter le chevauchement : le client deduplique par `seq`,
+      // donc renvoyer un message deja vu est sans consequence. C'est precisement ce qui
+      // rend le renvoi sur, alors qu'a l'etape 4 il produisait un doublon.
+      const depuisSeq = Number(options.depuisSeq ?? 0) || 0;
+      const messages =
+        depuisSeq > 0
+          ? messagesDepuis(salon, depuisSeq)
+          : messagesDepuis(salon, 0).slice(-30);
+
       ack?.({
         ok: true,
-        messages: messagesDepuis(salon, 0).slice(-30),
+        messages,
         presents: presences.instantane(room),
+        dernierSeq: salon.dernierSeq,
       });
 
       // Rien a annoncer si la personne avait deja un onglet ouvert, ou si elle revient

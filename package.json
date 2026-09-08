@@ -9,6 +9,7 @@
     "seed": "tsx src/seed.ts --print",
     "scenario": "tsx src/realtime/piege.scenario.ts",
     "test:presence": "tsx src/realtime/presence.test.ts",
+    "test:convergence": "tsx src/realtime/convergence.test.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

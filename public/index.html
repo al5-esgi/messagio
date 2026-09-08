@@ -89,8 +89,10 @@
     </form>
 
     <script src="/socket.io/socket.io.js"></script>
-    <script>
+    <script type="module">
       // Etape 4 : Socket.IO. Une room par salon, un ack sur chaque action.
+      // Etape 6 : deduplication par `seq` et resynchronisation apres coupure.
+      import { SalonClient } from "./salon-client.js";
       const params = new URLSearchParams(location.search);
       const me = params.get("membre") || "u" + Math.floor(Math.random() * 1000);
       let sel = params.get("salon") || "general";
@@ -108,6 +110,10 @@
       function demarrer(token) {
         // Le jeton passe par `auth`, pas par l'URL : il ne finit pas dans les journaux.
         socket = io({ auth: { token } });
+        // Un module n'expose pas ses variables a la console : on le fait explicitement,
+        // pour que les manipulations de TP restent possibles depuis DevTools.
+        window.socket = socket;
+        window.clients = clients;
 
         socket.on("connect", () => {
           info("connecte " + me);
@@ -122,14 +128,22 @@
         // Reconnexion automatique : Socket.IO la gere, il faut seulement
         // REJOINDRE a nouveau la room - une room ne survit pas a la session.
         socket.io.on("reconnect", (n) => {
-          info("reconnecte (tentative " + n + ") - on rejoint " + sel);
+          // La room ne survit pas a la session : il faut re-join. On en profite pour
+          // demander la suite depuis notre dernier seq connu (etape 6).
+          info(
+            "reconnecte (tentative " + n + ") - resync de " + sel +
+              " depuis seq " + clientDu(sel).lastSeq,
+          );
           rejoindre(sel);
         });
         socket.io.on("reconnect_attempt", (n) => info("reconnexion... " + n));
 
         socket.on("message", (msg) => {
-          if (msg.salonId !== sel) return;
-          messages.push(msg);
+          // Meme en direct on passe par la deduplication : un message peut arriver
+          // ici ET dans le lot de resynchronisation qui suit une coupure.
+          const nouveau = clientDu(msg.salonId).recevoir(msg);
+          if (msg.salonId !== sel || !nouveau) return;
+          messages = clientDu(sel).affiches;
           render();
         });
 
@@ -151,6 +165,13 @@
         socket.on("typing", ({ membre }) => marquerEcrit(membre));
       }
 
+      // Un SalonClient par salon : il garde les seq deja vus, donc un renvoi
+      // (reconnexion, chevauchement, message recu deux fois) n'ajoute pas de doublon.
+      const clients = new Map();
+      const clientDu = (salonId) => {
+        if (!clients.has(salonId)) clients.set(salonId, new SalonClient());
+        return clients.get(salonId);
+      };
       let messages = [];
       let presents = [];              // [{ membre, saisit }]
       const ecrivent = new Map();     // membre -> minuteur d'expiration du "X ecrit"
@@ -189,10 +210,14 @@
 
       async function rejoindre(salonId) {
         let res;
+        const client = clientDu(salonId);
         try {
+          // On annonce le dernier seq deja affiche : le serveur renvoie la suite.
           res = await socket
             .timeout(DELAI_ACK_MS)
-            .emitWithAck("join", "salon:" + salonId);
+            .emitWithAck("join", "salon:" + salonId, {
+              depuisSeq: client.lastSeq,
+            });
         } catch {
           info(
             "join " + salonId + " : pas de reponse du serveur en " + DELAI_ACK_MS + " ms",
@@ -211,7 +236,14 @@
         }
 
         sel = salonId;
-        messages = res.messages;
+        const nouveaux = client.recevoirLot(res.messages);
+        messages = client.affiches;
+        if (res.messages.length !== nouveaux) {
+          console.log(
+            `resync : ${res.messages.length} recus, ${nouveaux} nouveaux, ` +
+              `${res.messages.length - nouveaux} doublon(s) ignore(s)`,
+          );
+        }
         // Snapshot : on connait l'etat courant sans attendre que quelqu'un bouge.
         presents = res.presents || [];
         ecrivent.clear();

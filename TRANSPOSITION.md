@@ -26,7 +26,7 @@ Les ADR correspondants : `docs/adr/0001` (etape 2, acceptee etape 4), `docs/adr/
 | 3 - serveur `ws` + JWT + Origin + rate-limit | fait | `src/realtime/ws-server.ts` |
 | 4 - Socket.IO + rooms `salon:<id>` + ack | fait | `src/realtime/socketio-server.ts` |
 | 5 - presence + `typing` + snapshot | fait | `src/realtime/presence.ts` |
-| 6 - deduplication a la reconnexion | a faire | `src/realtime/convergence.exemple.ts` a brancher |
+| 6 - deduplication a la reconnexion | fait | `convergence.exemple.ts` branche, `public/salon-client.js` |
 | 7 - adaptateur Redis + presence distribuee | a faire | |
 | 8 - signaling WebRTC + visio | a faire | |
 
@@ -36,9 +36,11 @@ ephemere (etape 5), et le « rechargement total » a la connexion (snapshot dans
 `naive-stub.ts` et `ws-server.ts` restent dans le depot comme points de comparaison ; seul
 `socketio-server.ts` est demarre.
 
-Restent les defauts d'ordre et de convergence : un message renvoye apres une coupure peut
-encore produire un doublon (etape 6), et la presence ne survit pas a une seconde instance
-(etape 7).
+Le renvoi apres coupure ne produit plus de doublon : le `seq` par salon sert de cle
+d'idempotence, le client deduplique (`npm run scenario`, `npm run test:convergence`).
+
+Reste que la presence et la numerotation ne survivent pas a une seconde instance (etape 7),
+et qu'il n'y a pas de signaling WebRTC (etape 8).
 
 ## Code fourni pour vous aider
 

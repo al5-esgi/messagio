@@ -78,8 +78,12 @@ Le front accepte `?membre=<pseudo>` et `?salon=<id>` pour ouvrir deux onglets di
 La presence par salon, l'indicateur de saisie et le snapshot a la connexion sont en place
 (etape 5, `src/realtime/presence.ts`) : `npm run test:presence`.
 
-Restent a corriger : pas de deduplication a la reconnexion (etape 6), instance unique
-(etape 7), pas de signaling WebRTC (etape 8).
+La resynchronisation apres coupure est en place (etape 6) : le `join` accepte `{ depuisSeq }`,
+le client deduplique par `seq` via `public/salon-client.js`. Verification :
+`npm run scenario` (echoue, divergence), `npm run scenario -- --avec-strategie` (converge),
+`npm run test:convergence`.
+
+Restent a corriger : instance unique (etape 7), pas de signaling WebRTC (etape 8).
 `TRANSPOSITION.md` tient la liste. Le cas d'ordre et de deduplication : `npm run scenario`.
 
 Le canal SSE de l'etape 2 (`GET /api/stream`) reste disponible pour un client en lecture seule.
