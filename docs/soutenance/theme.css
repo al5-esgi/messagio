@@ -1,0 +1,92 @@
+/* Theme clair VERROUILLE : la presentation est projetee. Contrastes renforces,
+   un videoprojecteur delave les valeurs claires. */
+:root {
+  --fond: #ffffff;
+  --texte: #14171c;
+  --faible: #4b5563;
+  --tres-faible: #6b7280;
+  --accent: #4338ca;
+  --accent-doux: #eef0ff;
+  --bord: #d8dde6;
+  --chaud: #b45309;
+}
+.reveal { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--texte); font-size: 30px; }
+.reveal-viewport { background: var(--fond); }
+.reveal .slides { text-align: left; }
+/* Le centrage vertical est celui de reveal (`center: true`) : il positionne la section
+   via un `top` calcule. Ne PAS lui imposer de hauteur ici, cela le neutralise - et ne pas
+   tenter un flex non plus, reveal pose `display: block` en style inline. */
+.reveal .slides > section { padding: 0 8px; }
+/* Conteneur ajoute au build : c'est LUI qu'on centre, la section portant des styles
+   inline poses par reveal. */
+.contenu {
+  height: 600px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+.contenu > *:last-child { margin-bottom: 0; }
+
+.reveal h1 { font-size: 2.1em; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; text-transform: none; }
+.reveal h2 {
+  font-size: 1.28em; font-weight: 680; letter-spacing: -0.015em; text-transform: none;
+  margin: 0 0 22px; padding-bottom: 10px; border-bottom: 2px solid var(--accent-doux);
+}
+.reveal h3 { font-size: 0.78em; font-weight: 670; text-transform: none; margin: 0 0 8px; color: var(--accent); }
+.reveal p { line-height: 1.5; margin: 0 0 14px; }
+
+.kicker { font-size: 0.5em; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); font-weight: 650; margin-bottom: 10px; }
+.sous { font-size: 0.82em; color: var(--faible); }
+.meta { font-size: 0.55em; color: var(--tres-faible); margin-top: 26px; }
+.intro { font-size: 0.82em; color: var(--faible); }
+.note { font-size: 0.56em; color: var(--tres-faible); line-height: 1.55; margin-top: 16px; }
+
+.cle {
+  background: var(--accent-doux); border-left: 4px solid var(--accent);
+  border-radius: 0 8px 8px 0; padding: 14px 18px; font-size: 0.76em; line-height: 1.5;
+  margin: 20px 0 12px;
+}
+.reveal code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em;
+  background: #f3f4f8; border: 1px solid var(--bord); border-radius: 5px; padding: 1px 6px;
+}
+.cle code { background: #fff; }
+
+.cartes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 6px 0; }
+.carte { background: #fafbfd; border: 1px solid var(--bord); border-radius: 10px; padding: 16px; }
+.carte .chiffre { display: block; font-size: 1.05em; font-weight: 700; color: var(--accent); font-family: ui-monospace, Menlo, monospace; margin-bottom: 8px; }
+.carte p { font-size: 0.55em; color: var(--faible); line-height: 1.5; margin: 0; }
+
+.deux { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+.trois { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+.deux p, .trois p { font-size: 0.62em; line-height: 1.55; }
+.trois p { font-size: 0.55em; }
+
+.reveal table { font-size: 0.62em; border-collapse: collapse; width: 100%; margin: 0; }
+.reveal table td { padding: 9px 10px; border-bottom: 1px solid var(--bord); vertical-align: top; }
+.traj td.n, .adr td.n {
+  width: 42px; font-weight: 700; color: var(--accent);
+  font-family: ui-monospace, Menlo, monospace;
+}
+.traj td.tech { text-align: right; color: var(--tres-faible); font-size: 0.9em; white-space: nowrap; }
+.codes { width: auto; }
+.codes td:first-child { width: 90px; }
+.adr td:nth-child(2) { width: 34%; }
+.adr td:last-child { color: var(--faible); font-size: 0.92em; }
+.chaos { font-size: 0.66em; }
+.chaos td:last-child { text-align: right; font-family: ui-monospace, Menlo, monospace; color: var(--accent); }
+
+.mesure { display: flex; gap: 12px; margin: 18px 0; flex-wrap: wrap; }
+.mesure span {
+  background: #fafbfd; border: 1px solid var(--bord); border-radius: 8px;
+  padding: 10px 14px; font-size: 0.58em; color: var(--faible);
+}
+.mesure b { color: var(--accent); font-family: ui-monospace, Menlo, monospace; }
+.mesure.large span { flex: 1; text-align: center; }
+
+.limites { font-size: 0.62em; line-height: 1.55; padding-left: 22px; }
+.limites li { margin-bottom: 13px; }
+
+.demo .script { font-size: 0.72em; line-height: 1.5; padding-left: 26px; counter-reset: none; }
+.demo .script li { margin-bottom: 13px; }
+.demo h2 { border: 0; }

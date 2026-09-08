@@ -1,0 +1,296 @@
+<section data-auto-animate>
+  <p class="kicker">Web temps réel — soutenance</p>
+  <h1>messagio</h1>
+  <p class="sous">Chat multi-salons + visio — sujet n° 3</p>
+  <p class="meta">Du framing TCP au P2P, en neuf séances</p>
+  <aside class="notes">
+    <b>[0:00 → 0:20]</b> Se présenter, annoncer le sujet et le plan en une phrase :
+    « je pars d'un stub volontairement naïf, et chaque séance en retire un défaut précis.
+    Je finirai par une démo. »
+  </aside>
+</section>
+
+<section>
+  <h2>Le point de départ : un stub qui ment</h2>
+  <p class="intro">Trois défauts, mesurés et non supposés.</p>
+  <div class="cartes">
+    <div class="carte">
+      <span class="chiffre">2917 o</span>
+      <p>toutes les 500 ms, <b>sans qu'aucun message ne soit posté</b></p>
+    </div>
+    <div class="carte">
+      <span class="chiffre">3 / 3</span>
+      <p>salons envoyés à chaque client — le filtrage était <b>cosmétique</b>, côté client</p>
+    </div>
+    <div class="carte">
+      <span class="chiffre">seq 1→7</span>
+      <p>perdus après 35 messages ratés, <b>sans que rien ne le signale</b></p>
+    </div>
+  </div>
+  <p class="note">Sonde WebSocket sur le stub, avant toute modification.</p>
+  <aside class="notes">
+    <b>[0:20 → 1:20]</b> Insister : ces chiffres viennent d'une sonde, pas d'une lecture du code.
+    Le troisième défaut est le plus grave car il est <i>silencieux</i> : l'utilisateur ne sait
+    pas qu'il a perdu des messages. C'est lui qui structurera les séances 6 et 9.
+  </aside>
+</section>
+
+<section>
+  <h2>La trajectoire</h2>
+  <p class="intro">Chaque séance retire une garantie manquante.</p>
+  <table class="traj">
+    <tr><td class="n">2</td><td>rattraper ce qu'on a raté</td><td class="tech">SSE + buffer borné</td></tr>
+    <tr><td class="n">3</td><td>savoir <b>qui</b> parle</td><td class="tech">JWT au handshake</td></tr>
+    <tr><td class="n">4</td><td>savoir <b>à qui</b> on parle</td><td class="tech">rooms + acks</td></tr>
+    <tr><td class="n">5</td><td>savoir <b>qui est là</b></td><td class="tech">présence + grâce</td></tr>
+    <tr><td class="n">6</td><td>ne pas compter deux fois</td><td class="tech">seq + déduplication</td></tr>
+    <tr><td class="n">7</td><td>tenir la charge</td><td class="tech">Redis adapter</td></tr>
+    <tr><td class="n">9</td><td>se passer du serveur</td><td class="tech">WebRTC</td></tr>
+  </table>
+  <aside class="notes">
+    <b>[1:20 → 2:20]</b> Ne pas lire le tableau. Dire seulement : « la progression n'est pas
+    une liste de technos, c'est une liste de garanties. À chaque fois je nomme ce qui manque,
+    puis je choisis l'outil. » Puis enchaîner.
+  </aside>
+</section>
+
+<section>
+  <h2>Séances 1–2 · Cadrer et rattraper</h2>
+  <div class="deux">
+    <div>
+      <h3>Le framing</h3>
+      <p>TCP livre un <b>flux d'octets</b>, pas des messages. 4 octets de longueur, puis
+      le contenu — on n'émet rien tant que la trame est incomplète.</p>
+      <p class="note">C'est ce que <code>ws</code> fera pour moi en séance 3.</p>
+    </div>
+    <div>
+      <h3>Le rattrapage SSE</h3>
+      <p>Buffer <b>borné</b> à 100, rejeu par <code>Last-Event-ID</code>, et
+      <code>resync-needed</code> quand le retard dépasse le buffer.</p>
+      <p class="note">On ne ment pas au client : soit on rejoue, soit on le dit.</p>
+    </div>
+  </div>
+  <p class="cle">SSE ne sera jamais le transport principal : il est unidirectionnel.
+  Un « X écrit… » imposerait un POST par frappe.</p>
+  <aside class="notes">
+    <b>[2:20 → 3:30]</b> Le point à faire passer : j'ai implémenté SSE en sachant qu'il ne
+    serait pas retenu, parce que le mécanisme de rattrapage qu'il oblige à écrire est celui
+    que je rejouerai sur Socket.IO en séance 6. Ce n'était pas un détour.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 3 · Le handshake</h2>
+  <p class="intro">Une connexion WebSocket commence par une <b>requête HTTP ordinaire</b>.
+  Le serveur répond <code>101 Switching Protocols</code>, et la socket cesse d'être HTTP.</p>
+  <p class="cle">Après le 101, il n'y a plus jamais d'en-têtes.<br>
+  Le handshake est le <b>seul</b> moment où l'on peut authentifier une connexion.</p>
+  <table class="codes">
+    <tr><td><code>401</code></td><td>problème d'<b>identité</b> — JWT absent ou invalide</td></tr>
+    <tr><td><code>403</code></td><td>problème de <b>provenance</b> — Origin non autorisée</td></tr>
+    <tr><td><code>1008</code></td><td>règle enfreinte — 15 msg/s dépassés</td></tr>
+  </table>
+  <p class="note">Et l'auteur d'un message vient du JWT, jamais du corps : un client
+  authentifié <code>mallory</code> qui envoie <code>"auteur": "usurpateur"</code> est
+  enregistré sous <code>mallory</code>.</p>
+  <aside class="notes">
+    <b>[3:30 → 4:40]</b> La distinction 401/403 est attendue. Le second point est le plus
+    important : authentifier la connexion ne sert à rien si le corps du message reste libre.
+    Si on me demande l'Origin : elle est posée par le navigateur et non falsifiable par le JS
+    d'une page — elle protège d'un onglet détourné, pas d'un client hostile comme wscat.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 4 · Rooms et acks</h2>
+  <div class="deux">
+    <div>
+      <h3>Une room par salon</h3>
+      <p><code>io.to("salon:dev").emit(...)</code> supprime en une ligne le défaut central
+      du constat initial.</p>
+    </div>
+    <div>
+      <h3>L'ack</h3>
+      <p>Un callback qui <b>voyage avec l'événement</b>. TCP garantit les octets, WebSocket
+      la trame — l'ack garantit que <b>l'application a accepté</b>.</p>
+    </div>
+  </div>
+  <p class="cle">L'autorisation se vérifie <b>deux fois</b> : au <code>join</code>,
+  et à chaque écriture.</p>
+  <p class="note">Sans le second contrôle, un membre autorisé sur <code>general</code>
+  écrivait dans <code>dev</code> en annonçant simplement <code>salonId: "dev"</code>.</p>
+  <aside class="notes">
+    <b>[4:40 → 5:50]</b> C'est la faille la moins intuitive du projet, et elle ne dépend pas
+    du transport. Si on me demande pourquoi Socket.IO plutôt que ws nu : rooms, acks, et
+    l'adaptateur Redis de la séance 7 — trois choses que j'aurais dû réécrire.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 5 · Présence</h2>
+  <div class="trois">
+    <div><h3>Délai de grâce</h3><p>Un <code>disconnect</code> ne veut pas dire « parti ».
+    On diffère 5 s, et on annule si la personne revient.</p></div>
+    <div><h3>Signal éphémère</h3><p><code>typing</code> est diffusé, <b>jamais persisté</b>.
+    Il expire seul, aucun événement ne l'annule.</p></div>
+    <div><h3>Snapshot</h3><p>L'état courant part dans l'<b>ack du join</b> : un arrivant
+    voit tout sans attendre que quelqu'un bouge.</p></div>
+  </div>
+  <p class="note">Écart assumé avec le kit : j'indexe par personne, pas par socket.
+  Deux onglets d'un même membre = une seule présence.</p>
+  <aside class="notes">
+    <b>[5:50 → 6:40]</b> Mentionner l'écart avec le kit : c'est un choix, pas une erreur du
+    support. Un chat affiche des personnes, pas des connexions. Piège technique si on me
+    questionne : il faut écouter <code>disconnecting</code> et non <code>disconnect</code>,
+    car socket.rooms est déjà vidé.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 6 · Convergence</h2>
+  <p class="intro">Un chat est un <b>journal d'événements immuables</b>, pas un état mutable
+  partagé. Personne n'édite le message d'un autre — la transformation d'OT ne servirait jamais.</p>
+  <p class="cle">Le renversement : de « calculer exactement ce qui manque »<br>
+  à « <b>renvoyer largement, il triera</b> ».</p>
+  <p>Un problème de calcul exact devient un problème d'<b>idempotence</b>. Le <code>seq</code>
+  en est la clé.</p>
+  <div class="mesure">
+    <span><code>npm run scenario</code> → code <b>1</b>, doublons</span>
+    <span><code>-- --avec-strategie</code> → code <b>0</b>, converge</span>
+  </div>
+  <p class="note">Limite : la déduplication ne comble pas les trous. Recevoir les seq 1 et 5
+  affiche 1 et 5 — rien n'est inventé.</p>
+  <aside class="notes">
+    <b>[6:40 → 7:50]</b> C'est la séance la plus conceptuelle : insister sur le renversement.
+    Et sur ce que ça débloque : le renvoi devient sans danger, ce qui referme le trou de la
+    séance 4 — quand un ack se perd, on ne savait pas si le message était passé.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 7 · Passer à l'échelle</h2>
+  <p class="intro">Deux instances, un proxy sticky, Redis en pub/sub.
+  <b>Le code des rooms n'a pas bougé d'une ligne.</b></p>
+  <div class="mesure large">
+    <span>500 connexions en <b>3084 ms</b></span>
+    <span>médiane <b>93 ms</b> · p95 <b>1073 ms</b></span>
+    <span>A = <b>361</b> · B = <b>142</b> → <b>72 / 28</b></span>
+  </div>
+  <p class="cle"><code>ip_hash</code> répartit par <b>adresse IP</b>, pas par charge.<br>
+  Le sticky est une contrainte acceptée, pas une stratégie d'équilibrage.</p>
+  <p class="note">Deux pannes trouvées : <code>socket.data</code> est sérialisé en JSON par
+  <code>fetchSockets()</code> (un <code>RateLimiter</code> y faisait entrer un
+  <code>setInterval</code> circulaire), et un <code>fetchSockets()</code> rejeté non capturé
+  <b>propageait la panne au cluster</b>.</p>
+  <aside class="notes">
+    <b>[7:50 → 9:00]</b> Les deux pannes valent d'être racontées : c'est la séance qui a
+    introduit la seule panne en cascade du projet, et c'est un argument pour l'ADR-3.
+    Le 72/28 doit être présenté comme un résultat compris, pas subi.
+  </aside>
+</section>
+
+<section>
+  <h2>Séance 9 · WebRTC et chaos</h2>
+  <div class="deux">
+    <div>
+      <h3>Le serveur relaie</h3>
+      <p>Il transporte <code>offer</code>, <code>answer</code>, <code>ice</code> — et
+      <b>ne voit jamais</b> le flux. Même règle d'autorisation que le salon, sinon la room
+      d'appel serait une porte dérobée.</p>
+    </div>
+    <div>
+      <h3>Sous coupure de 5 s</h3>
+      <table class="chaos">
+        <tr><td>détection</td><td><b>0 ms</b></td></tr>
+        <tr><td>reconnexion</td><td><b>3301 ms</b></td></tr>
+        <tr><td>resynchronisation</td><td><b>9 ms</b></td></tr>
+      </table>
+    </div>
+  </div>
+  <p class="cle">99,7 % du délai est la <b>reconnexion</b>, pas le rattrapage.<br>
+  Optimiser la resynchronisation serait inutile.</p>
+  <aside class="notes">
+    <b>[9:00 → 10:10]</b> Le chiffre le plus parlant de tout le projet. Il dit où porter
+    l'effort : le seul levier est <code>reconnectionDelayMax</code>. Enchaîner directement
+    sur la démo.
+  </aside>
+</section>
+
+<section class="demo">
+  <p class="kicker">Démonstration</p>
+  <h2>4 minutes, 5 points</h2>
+  <ol class="script">
+    <li><b>Cloisonnement</b> — deux fenêtres, deux salons : rien ne fuit</li>
+    <li><b>Autorisation</b> — carol refusée sur <code>#dev</code>, alice admise</li>
+    <li><b>Présence distribuée</b> — badges <i>instance A</i> / <i>instance B</i></li>
+    <li><b>Chaos</b> — <code>bash chaos.sh coupure 5</code>, resync sans doublon</li>
+    <li><b>P2P</b> — canal ouvert, message hors serveur, candidat ICE</li>
+  </ol>
+  <aside class="notes">
+    <b>[10:10 → 14:00]</b> Tout doit être <b>lancé et testé avant</b>.
+    Deux fenêtres côte à côte sur :3001 et :3002 (le badge d'instance est la preuve visuelle
+    du scaling). Un terminal prêt avec chaos.sh. Un troisième onglet sur appel.html.
+    <br><br>
+    Si quelque chose casse : ne pas déboguer en direct, passer au point suivant et le dire.
+    Le rapport de chaos contient les mesures.
+  </aside>
+</section>
+
+<section>
+  <h2>Trois décisions, trois ADR</h2>
+  <table class="adr">
+    <tr>
+      <td class="n">1</td>
+      <td><b>Socket.IO</b> pour le flux principal</td>
+      <td>Pas SSE : unidirectionnel. Pas WebRTC : aucune autorité centrale, donc ni
+      <code>seq</code>, ni historique.</td>
+    </tr>
+    <tr>
+      <td class="n">2</td>
+      <td><b>seq + déduplication</b></td>
+      <td>Pas OT ni CRDT : un message est atomique et immuable, la transformation ne
+      servirait jamais.</td>
+    </tr>
+    <tr>
+      <td class="n">3</td>
+      <td><b>Reconnexion + resync</b></td>
+      <td>Redis rend le scaling possible, pas le système résilient — c'est lui qui a
+      introduit la seule panne en cascade.</td>
+    </tr>
+  </table>
+  <aside class="notes">
+    <b>[14:00 → 14:40]</b> Les trois sont au statut Accepté. Le point fort : chaque décision
+    est justifiée par ce qui a été <i>écarté</i>, pas seulement par ce qui a été retenu.
+  </aside>
+</section>
+
+<section>
+  <h2>Ce que je sais qu'il manque</h2>
+  <ul class="limites">
+    <li><b>Les <code>seq</code> sont en mémoire.</b> Un redémarrage les fait recycler : un
+    client revenant avec <code>depuisSeq: 40</code> croit son état à jour alors qu'il ne l'est
+    pas. Parade connue : un identifiant d'instance qui déclenche un resync complet.</li>
+    <li><b>Les trous ne sont pas détectés activement.</b> L'ack porte <code>dernierSeq</code>,
+    mais le front ne le compare pas encore à son <code>lastSeq</code>.</li>
+    <li><b>Pas d'authentification réelle.</b> <code>/api/dev-token</code> délivre un JWT à qui
+    le demande — commodité de TP, signalée comme telle.</li>
+  </ul>
+  <p class="note">Le canal P2P ne bénéficie d'aucune de ces garanties, et c'est assumé :
+  un <code>RTCDataChannel</code> rompu ne se répare pas, il faut renégocier.</p>
+  <aside class="notes">
+    <b>[14:40 → 15:00]</b> Annoncer soi-même ses limites désamorce la moitié des questions
+    et montre qu'on a compris le système. Terminer là-dessus, puis « je prends vos questions ».
+  </aside>
+</section>
+
+<section data-auto-animate>
+  <h1>Merci</h1>
+  <p class="sous">Questions ?</p>
+  <p class="meta">messagio — 9 séances, 3 ADR, 2 instances, 1 canal P2P</p>
+  <aside class="notes">
+    Questions probables : pourquoi pas ws nu ? (rooms/acks/Redis à réécrire) ·
+    pourquoi le sticky ? (état de session Engine.IO) ·
+    que se passe-t-il si Redis tombe ? (repli sur la vue locale, le chat continue) ·
+    l'ack survit-il à une coupure ? (non — d'où la déduplication).
+  </aside>
+</section>
