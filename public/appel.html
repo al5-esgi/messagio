@@ -357,7 +357,41 @@
         log("-> " + t, "env");
       });
 
+      /**
+       * getUserMedia echoue de plusieurs facons tres differentes, et le message brut du
+       * navigateur ne dit presque jamais laquelle. On traduit `e.name`, qui lui est normalise.
+       */
+      const DIAGNOSTIC = {
+        NotAllowedError:
+          "permission refusee. Deux niveaux a verifier : (1) le SITE dans le navigateur " +
+          "(icone camera dans la barre d'adresse, ou reglages du site pour localhost) ; " +
+          "(2) le NAVIGATEUR dans macOS : Reglages Systeme > Confidentialite et securite > " +
+          "Camera, et cocher l'application. Une autorisation accordee a Chrome ne vaut PAS " +
+          "pour Arc : ce sont deux applications distinctes pour macOS.",
+        NotFoundError: "aucune camera detectee par le navigateur.",
+        NotReadableError:
+          "camera detectee mais illisible : elle est probablement deja occupee par une " +
+          "autre application (un autre navigateur avec un onglet actif, Zoom, Photo Booth...). " +
+          "Fermez l'onglet qui la retient et reessayez.",
+        OverconstrainedError: "aucune camera ne satisfait les contraintes demandees.",
+        SecurityError: "contexte non securise ou bloque par la politique du navigateur.",
+        AbortError: "le materiel a repondu par une erreur.",
+      };
+
       $("b-camera").onclick = async () => {
+        // `navigator.mediaDevices` n'existe QUE dans un contexte securise : HTTPS, ou
+        // http://localhost. Une page servie via une IP de reseau local (http://192.168.x.x)
+        // n'y a pas droit, et l'API est alors carrement absente - pas une erreur, `undefined`.
+        if (!navigator.mediaDevices?.getUserMedia) {
+          log(
+            "API media indisponible : contexte non securise. Ouvrez la page sur " +
+              "http://localhost (et non une IP de reseau local) ou en HTTPS. " +
+              "Origine actuelle : " + location.origin,
+            "err",
+          );
+          return;
+        }
+
         try {
           fluxLocal = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           $("v-local").srcObject = fluxLocal;
@@ -366,9 +400,31 @@
           $("b-camera").disabled = true;
           $("b-couper").disabled = false;
         } catch (e) {
-          log("camera indisponible : " + e.message, "err");
+          log(`camera indisponible [${e.name}] : ${DIAGNOSTIC[e.name] ?? e.message}`, "err");
+          await diagnostiquer();
         }
       };
+
+      /** Complement de diagnostic : etat de la permission et materiel visible. */
+      async function diagnostiquer() {
+        try {
+          const p = await navigator.permissions?.query({ name: "camera" });
+          if (p) log("etat de la permission camera : " + p.state, "sig");
+        } catch {
+          log("ce navigateur n'expose pas l'etat de la permission camera", "sig");
+        }
+        try {
+          const appareils = await navigator.mediaDevices.enumerateDevices();
+          const cams = appareils.filter((d) => d.kind === "videoinput");
+          log(`cameras vues par le navigateur : ${cams.length}`, "sig");
+          // Sans permission accordee, les libelles sont vides : c'est en soi un indice.
+          if (cams.length && !cams[0].label) {
+            log("libelles vides -> la permission n'a jamais ete accordee a ce navigateur", "sig");
+          }
+        } catch (e) {
+          log("enumerateDevices a echoue : " + e.message, "err");
+        }
+      }
 
       $("b-couper").onclick = () => {
         for (const p of fluxLocal?.getTracks() ?? []) p.stop();

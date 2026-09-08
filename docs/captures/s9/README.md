@@ -69,6 +69,20 @@ bash chaos.sh reset
 Captures a prendre : le bandeau pendant la reconnexion, la ligne `resync :` en console, et le
 fil apres reprise (messages manques presents, une seule fois).
 
+## Si la camera ne demarre pas
+
+Le bouton journalise un diagnostic : `[NomDeLErreur]`, l'etat de la permission, et le nombre de
+cameras vues. Les trois causes courantes :
+
+| Journal | Cause | Correctif |
+|---|---|---|
+| `[NotAllowedError]` + `permission : denied` + libelles vides | le navigateur n'a jamais eu l'autorisation | macOS > Reglages Systeme > Confidentialite et securite > **Camera** : cocher CE navigateur. L'autorisation est **par application** : Chrome autorise n'implique pas Arc autorise. Puis, dans le navigateur, reglages du site pour `localhost` : passer Camera sur *Autoriser*. |
+| `[NotReadableError]` | camera detectee mais deja prise par une autre application | fermer l'autre navigateur / Zoom / Photo Booth qui la retient, puis reessayer |
+| `API media indisponible : contexte non securise` | page ouverte via une IP de reseau local | `navigator.mediaDevices` n'existe qu'en HTTPS ou sur `http://localhost`. Ouvrir la page sur `localhost`. |
+
+> A noter pour le chaos : `http://localhost:19001` (toxiproxy) reste un contexte securise, donc
+> la camera y fonctionne. Une IP de reseau local, non.
+
 ## Note sur la visio
 
 La page porte un bouton **Activer camera + micro** qui ajoute les pistes et declenche une
