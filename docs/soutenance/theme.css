@@ -94,6 +94,9 @@
 .trois.petit p { font-size: 0.5em; }
 .trois.petit h3 { font-size: 0.66em; }
 .chaos.grand { font-size: 0.78em; width: 70%; margin: 10px 0; }
+.chaine { font-size: 0.6em; margin-bottom: 6px; }
+.chaine td.n { width: 34px; font-weight: 700; color: var(--accent); font-family: ui-monospace, Menlo, monospace; }
+.chaine td.ou { text-align: right; color: var(--tres-faible); font-size: 0.9em; white-space: nowrap; }
 .chaos.grand td { padding: 12px 10px; }
 
 .demo .script { font-size: 0.72em; line-height: 1.5; padding-left: 26px; counter-reset: none; }

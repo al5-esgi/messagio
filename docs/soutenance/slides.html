@@ -70,7 +70,7 @@
   <code>mallory</code> qui envoie <code>"auteur": "usurpateur"</code> est enregistré
   <code>mallory</code>.</p>
   <aside class="notes">
-    <b>[1:30 → 2:35]</b> Définir l'ack : un callback qui voyage avec l'événement — seul un
+    <b>[1:25 → 2:30]</b> Définir l'ack : un callback qui voyage avec l'événement — seul un
     numéro de corrélation circule. TCP garantit les octets, WebSocket la trame, l'ack garantit
     que <i>l'application a accepté</i>.
     <br><br>
@@ -100,12 +100,12 @@
       <b>→ séquence + déduplication</b></p>
     </div>
   </div>
-  <p class="cle">La progression n'est pas une liste de technologies,<br>
-  c'est une liste de <b>garanties manquantes</b>.</p>
+  <p class="note">Une liste de <b>garanties manquantes</b>, pas une liste de technologies.
+  Le troisième défaut est le plus grave parce qu'il est silencieux — c'est lui qui donne
+  le « piège » que je vais démontrer.</p>
   <aside class="notes">
-    <b>[2:35 → 3:25]</b> Ces trois constats viennent d'une sonde, pas d'une lecture du code.
-    Le troisième est le plus grave parce qu'il est <i>silencieux</i>, et c'est lui qui donne
-    le « piège » que je vais démontrer.
+    <b>[2:30 → 3:10]</b> Rester bref. Ces constats viennent d'une sonde, pas d'une lecture
+    du code. Enchaîner vite sur la démo.
   </aside>
 </section>
 
@@ -123,7 +123,7 @@
     automatique, resynchronisation, et <b>aucun « parti »</b> — le délai de grâce l'absorbe.</li>
   </ol>
   <aside class="notes">
-    <b>[3:25 → 6:25]</b> Tout est lancé AVANT : deux fenêtres sur :3001 et :3002, un terminal
+    <b>[3:10 → 6:10]</b> Tout est lancé AVANT : deux fenêtres sur :3001 et :3002, un terminal
     avec <code>npm run scenario</code> et <code>bash chaos.sh coupure 5</code> déjà tapés.
     <br><br>
     <b>Scène 1 (60 s)</b> — montrer les badges instance A / instance B : c'est la preuve
@@ -162,12 +162,42 @@
   <p class="cle">Le renversement de l'ADR-2 : de « calculer exactement ce qui manque »
   à « <b>renvoyer largement, il triera</b> ». Le <code>seq</code> est la clé d'idempotence.</p>
   <aside class="notes">
-    <b>[6:25 → 7:55]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
+    <b>[6:10 → 7:10]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
     ce que la grille attend explicitement.
     <br><br>
     Sur l'ADR-3, raconter la panne : <code>fetchSockets()</code> rejette si une instance ne
     répond pas, et le rejet non capturé faisait tomber l'instance qui interrogeait. D'où le
     repli sur la vue locale.
+  </aside>
+</section>
+
+<section>
+  <h2>La reconnexion, maillon par maillon</h2>
+  <p class="intro">Socket.IO rétablit <b>la connexion</b>. Il ne sait rien de mes rooms ni des
+  messages manqués : le reste est à écrire.</p>
+  <table class="chaine">
+    <tr><td class="n">1</td><td>le heartbeat détecte la coupure</td><td class="ou">serveur — <code>pingTimeout</code></td></tr>
+    <tr><td class="n">2</td><td>reconnexion avec backoff</td><td class="ou">Socket.IO, automatique</td></tr>
+    <tr><td class="n">3</td><td><b>re-join</b> — une room ne survit pas à la session</td><td class="ou">client</td></tr>
+    <tr><td class="n">4</td><td>le client annonce son <code>lastSeq</code></td><td class="ou">client</td></tr>
+    <tr><td class="n">5</td><td>le serveur <b>rejoue le delta</b></td><td class="ou">serveur</td></tr>
+    <tr><td class="n">6</td><td>le client déduplique et retrie</td><td class="ou">client</td></tr>
+  </table>
+  <div class="mesure">
+    <span>première connexion : instantané, <b>2602 o</b></span>
+    <span>reconnexion : delta, <b>345 o</b> — <b>7,5×</b> moins</span>
+  </div>
+  <p class="cle">Le serveur renvoie <b>large plutôt qu'exact</b> : puisque le client déduplique,
+  un message répété ne coûte rien, alors qu'un message oublié est perdu.</p>
+  <aside class="notes">
+    <b>[7:10 → 8:05]</b> Le maillon 3 est celui qu'on oublie : sans re-join, tout semble
+    reconnecté et plus rien n'arrive.
+    <br><br>
+    Le contraste des tailles est parlant : le stub envoyait 2917 octets toutes les 500 ms,
+    changement ou pas. Ici, 345 octets une seule fois, à la reprise.
+    <br><br>
+    Si on demande pourquoi un instantané au premier join : un nouvel arrivant n'a pas de point
+    de départ, lui rejouer l'historique depuis le seq 1 n'aurait pas de sens.
   </aside>
 </section>
 
@@ -199,7 +229,7 @@
   <p class="note">Aussi : les <code>seq</code> ne survivent pas à un redémarrage, les trous ne
   sont pas détectés activement, et <code>/api/dev-token</code> n'authentifie personne.</p>
   <aside class="notes">
-    <b>[7:55 → 8:30]</b> Annoncer soi-même ses limites désamorce la moitié des questions.
+    <b>[8:05 → 8:35]</b> Annoncer soi-même ses limites désamorce la moitié des questions.
     <br><br>
     Questions probables : pourquoi pas ws nu ? (rooms/acks/adapter à réécrire) · pourquoi le
     sticky ? (état de session Engine.IO) · si Redis tombe ? (repli sur la vue locale, le chat

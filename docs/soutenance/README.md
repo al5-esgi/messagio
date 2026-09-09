@@ -28,11 +28,12 @@ La grille impose **14 min chrono : 8-9 min de présentation + démo, puis 5-6 mi
 
 | Bloc | Créneau | Ce que la grille attend |
 |---|---|---|
-| Sujet et architecture | 0:00 → 2:35 | « quel domaine, quels canaux/rooms, quel transport » |
-| Point de départ | 2:35 → 3:25 | contexte |
-| **Démonstration** | 3:25 → 6:25 | nominal 2 navigateurs · **le piège** · coupure/reprise |
-| Choix techniques | 6:25 → 7:55 | ADR-1, ADR-2, ADR-3 : options écartées argumentées |
-| Mesures et limites | 7:55 → 8:30 | prépare la Q&A |
+| Sujet et architecture | 0:00 → 2:30 | « quel domaine, quels canaux/rooms, quel transport » |
+| Point de départ | 2:30 → 3:10 | contexte |
+| **Démonstration** | 3:10 → 6:10 | nominal 2 navigateurs · **le piège** · coupure/reprise |
+| Choix techniques (ADR) | 6:10 → 7:10 | options écartées argumentées |
+| **La reconnexion, maillon par maillon** | 7:10 → 8:05 | critère 4 : « snapshot **ou rejeu du delta** » |
+| Mesures et limites | 8:05 → 8:35 | prépare la Q&A |
 
 ## La démo est notée 7 points sur 12 — à répéter
 
@@ -85,7 +86,7 @@ node docs/soutenance/build.mjs
 
 | Fichier | Rôle |
 |---|---|
-| `slides.html` | le contenu des 7 slides et les notes de l'orateur |
+| `slides.html` | le contenu des 8 slides et les notes de l'orateur |
 | `theme.css` | le thème clair, verrouillé pour la vidéoprojection |
 | `gabarit.html` | la coquille et la configuration de reveal |
 | `build.mjs` | inline les dépendances et enveloppe le contenu pour le centrage |
