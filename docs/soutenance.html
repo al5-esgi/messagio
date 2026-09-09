@@ -259,11 +259,11 @@
       <td><b>Écarté :</b> SSE, unidirectionnel — un « X écrit… » imposerait un POST par frappe.
       WebRTC, aucune autorité centrale : ni <code>seq</code>, ni historique, ni contrôle
       d'appartenance.</td></tr>
-    <tr><td class="n">2</td><td><b>Séquence + déduplication</b></td>
+    <tr><td class="n">2</td><td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
       <td><b>Écarté :</b> OT et CRDT — un message est atomique et immuable, la transformation
       ne servirait jamais. Snapshot+delta : un chat a besoin de l'historique, pas du dernier
-      état.</td></tr>
-    <tr><td class="n">3</td><td><b>Reconnexion + resynchronisation</b></td>
+      état. Horodatage : deux messages peuvent partager une milliseconde.</td></tr>
+    <tr><td class="n">3</td><td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
       <td><b>Écarté :</b> le fan-out Redis comme robustesse principale — il rend le scaling
       possible, pas le système résilient. C'est même lui qui a introduit la seule panne en
       cascade du projet.</td></tr>
@@ -277,6 +277,14 @@
   décisions prises sur le flux A/V n'étaient documentées nulle part.</p></div><aside class="notes">
     <b>[6:10 → 7:10]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
     ce que la grille attend explicitement.
+    <br><br>
+<b>Bien distinguer les deux axes</b> : l'ADR-2 dit comment les copies s'accordent
+    (convergence), l'ADR-3 sur quoi repose la résilience. CRDT et snapshot+delta appartiennent
+    à l'ADR-2, pas à l'ADR-3.
+    <br><br>
+    Si on objecte que ma stratégie n'est pas dans la liste du barème : c'est la déduplication
+    par numéro de séquence, la quatrième famille du kit, celle assignée au sujet 3. Un
+    horodatage jouerait le même rôle en moins fiable.
     <br><br>
     Sur l'ADR-3, raconter la panne : <code>fetchSockets()</code> rejette si une instance ne
     répond pas, et le rejet non capturé faisait tomber l'instance qui interrogeait. D'où le

@@ -28,6 +28,15 @@ sticky, avec fan-out et presence distribues via Redis.
 - **Reconnexion + resynchronisation** (rejeu par `seq`, snapshot dans l'ack du `join`).
 - **Fan-out multi-instances via Redis** comme element de robustesse principal.
 
+> **A ne pas confondre avec l'ADR-2.** Ce sont deux axes distincts. L'ADR-2 choisit comment les
+> copies **s'accordent** (CRDT, snapshot+delta, sequence+deduplication, tick) ; celui-ci choisit
+> sur quoi repose la **resilience**. CRDT et snapshot+delta n'ont donc pas leur place ici.
+>
+> Concretement, la resynchronisation retenue combine les deux formes que nomme la grille :
+> un **instantane borne** au premier `join` (30 derniers messages, 2602 octets mesures) et un
+> **rejeu du delta** a la reconnexion (`messagesDepuis(salon, depuisSeq)`, 345 octets pour
+> quatre messages manques, soit 7,5 fois moins).
+
 ## Decision
 
 **La reconnexion + resynchronisation est l'element de robustesse principal.** Le fan-out
