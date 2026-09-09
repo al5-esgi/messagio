@@ -116,8 +116,9 @@
     <li><b>Nominal, 2 navigateurs</b> — alice sur <i>instance A</i>, bob sur <i>instance B</i> :
     message, présence croisée, « X écrit… ». Puis carol <b>refusée</b> sur <code>#dev</code>.</li>
     <li><b>Le piège du sujet</b> — <code>npm run scenario</code> échoue en doublons.
-    En direct : bob poste pendant qu'alice est coupée ; au retour, les messages arrivent
-    <b>une seule fois</b>, numéros continus à l'écran.</li>
+    En direct, <b>sur une seule instance</b> : bob poste pendant qu'alice est coupée ; au retour,
+    le fil affiche <code>resync depuis le n° 37 — 4 reçus, 4 nouveaux, 0 doublon ignoré</code>,
+    puis <code>4 doublons ignorés</code> au second essai.</li>
     <li><b>Coupure et reprise</b> — <code>bash chaos.sh coupure 5</code> : reconnexion
     automatique, resynchronisation, et <b>aucun « parti »</b> — le délai de grâce l'absorbe.</li>
   </ol>
@@ -128,10 +129,11 @@
     <b>Scène 1 (60 s)</b> — montrer les badges instance A / instance B : c'est la preuve
     visuelle que la présence traverse deux serveurs. Puis le refus sur #dev.
     <br>
-    <b>Scène 2 (90 s)</b> — la plus importante, 3 points. D'abord le scénario CLI qui échoue,
-    puis la résolution en direct. Pointer les numéros <code>#seq</code> affichés sur chaque
-    message : c'est ce qui rend la convergence <i>visible</i>. Montrer la console :
-    « resync : N reçus, M nouveaux, X doublons ignorés ».
+    <b>Scène 2 (90 s)</b> — la plus importante, 3 points. Les DEUX navigateurs sur la MEME
+    instance (:3001) : la numérotation est par instance, c'est une limite assumée et annoncée
+    en fin de présentation. D'abord le scénario CLI qui échoue, puis la résolution en direct.
+    Pointer la ligne violette « resync … doublons ignorés » et les numéros <code>#seq</code>
+    continus : c'est ce qui rend la convergence <i>visible</i>.
     <br>
     <b>Scène 3 (30 s)</b> — recharger un onglet pendant la coupure pour montrer qu'aucun
     départ n'est annoncé.
@@ -190,9 +192,12 @@
       contrainte acceptée, pas un équilibrage.</p>
     </div>
   </div>
-  <p class="cle">Ce qui manque : les <code>seq</code> sont <b>en mémoire</b> — un redémarrage
-  les recycle et un client peut croire son état à jour à tort. Les trous ne sont pas détectés
-  activement. Et <code>/api/dev-token</code> n'authentifie personne.</p>
+  <p class="cle">Ce qui manque : la numérotation est <b>par instance</b> — deux instances
+  attribuent le même <code>seq</code> à deux messages. Redis distribue le fan-out et la
+  présence, <b>pas le domaine</b>. La parade serait un compteur atomique Redis, qui ferait de
+  lui une dépendance de correction.</p>
+  <p class="note">Aussi : les <code>seq</code> ne survivent pas à un redémarrage, les trous ne
+  sont pas détectés activement, et <code>/api/dev-token</code> n'authentifie personne.</p>
   <aside class="notes">
     <b>[7:55 → 8:30]</b> Annoncer soi-même ses limites désamorce la moitié des questions.
     <br><br>

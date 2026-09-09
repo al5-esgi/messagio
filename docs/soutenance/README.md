@@ -60,8 +60,13 @@ pile **avant le premier passage** — faites-le.
 
 Puis, tout préparé **avant** d'entrer dans la salle :
 
-1. deux fenêtres côte à côte : `localhost:3001/?membre=alice` et `localhost:3002/?membre=bob`
+1. **scène 1** — deux fenêtres : `localhost:3001/?membre=alice` et `localhost:3002/?membre=bob`
    (les badges *instance A* / *instance B* sont la preuve visuelle du scaling) ;
+1bis. **scène 2** — les deux fenêtres sur **la même instance** : `localhost:3001` pour alice
+   *et* bob. La numérotation `seq` est attribuée par instance : deux instances donnent le même
+   numéro à deux messages différents, et un store en mémoire par instance ne resynchronise pas
+   ce qui a été posté sur l'autre. Limite assumée, documentée dans l'ADR-2, et annoncée sur la
+   dernière slide ;
 2. un troisième onglet prêt sur `?membre=carol&salon=dev` pour la scène du refus ;
 3. un terminal avec `npm run scenario` et `bash chaos.sh coupure 5` **déjà tapés**, non exécutés ;
 4. la caméra testée sur le port exact que vous montrerez — les permissions sont par origine.

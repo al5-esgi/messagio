@@ -298,6 +298,15 @@
         font-style: italic;
         padding: 6px 0;
       }
+      .msg.systeme.resync {
+        color: var(--accent);
+        background: var(--accent-doux);
+        border-radius: 6px;
+        font-style: normal;
+        font-weight: 600;
+        padding: 6px 10px;
+        margin: 6px 0;
+      }
       .msg.refuse {
         display: block;
         color: var(--erreur);
@@ -481,6 +490,10 @@
       };
 
       let messages = [];
+      // Les lignes systeme (arrivees, departs, resync) sont gardees A PART.
+      // Les pousser dans `client.affiches` reviendrait a muter la structure de
+      // deduplication elle-meme : elle trie par `seq`, qu'une ligne systeme n'a pas.
+      let systeme = [];
       let presents = [];              // [{ membre, saisit }]
       const ecrivent = new Map();     // membre -> minuteur d'expiration du "X ecrit"
 
@@ -559,15 +572,30 @@
 
       // ---------- rendu ----------
       function render() {
-        if (!messages.length) {
+        if (!messages.length && !systeme.length) {
           fil.innerHTML = '<div class="vide">Aucun message dans ce salon.</div>';
           return;
         }
+        // On fusionne a l'affichage seulement : les messages restent la propriete
+        // du SalonClient, les lignes systeme s'intercalent selon leur ancrage.
+        const affichage = [];
+        let reste = [...systeme];
+        for (const m of messages) {
+          for (let i = 0; i < reste.length; i++) {
+            if (reste[i].apres < m.seq) affichage.push(...reste.splice(i--, 1));
+          }
+          affichage.push(m);
+        }
+        affichage.push(...reste);
+
         let precedent = null;
-        fil.innerHTML = messages
+        fil.innerHTML = affichage
           .map((m) => {
             if (m.systeme)
-              return (precedent = null), `<div class="msg systeme">${echapper(m.texte)}</div>`;
+              return (
+                (precedent = null),
+                `<div class="msg systeme ${m.classe ?? ""}">${echapper(m.texte)}</div>`
+              );
             // On regroupe les messages consecutifs d'un meme auteur.
             const groupe = precedent !== m.auteur;
             precedent = m.auteur;
@@ -649,8 +677,9 @@
         renderPresence();
       }
 
-      function ligneSysteme(texte) {
-        messages.push({ systeme: true, texte });
+      /** `apres` = le dernier seq connu au moment de l'evenement : sert a l'intercaler. */
+      function ligneSysteme(texte, classe = "") {
+        systeme.push({ systeme: true, texte, classe, apres: clientDu(sel).lastSeq });
         render();
       }
 
@@ -756,19 +785,34 @@
             '<div class="msg refuse">Acces refuse : ' + echapper(res.raison) + "</div>";
           presents = [];
           ecrivent.clear();
+          systeme = [];
           renderPresence();
           sel = salonId;
           mark();
           return;
         }
 
+        if (sel !== salonId) systeme = [];
         sel = salonId;
+        const avant = client.lastSeq;
         const nouveaux = client.recevoirLot(res.messages);
+        const doublons = res.messages.length - nouveaux;
         messages = client.affiches;
-        if (res.messages.length !== nouveaux) {
+
+        // Rendre la strategie VISIBLE, et pas seulement effective : apres une coupure,
+        // le serveur renvoie large et le client trie. Sans cette ligne, on ne voit que
+        // l'absence de doublons - ce qui ne prouve rien a l'oeil nu.
+        if (avant > 0) {
+          ligneSysteme(
+            `resync depuis le n° ${avant} — ${res.messages.length} reçus, ` +
+              `${nouveaux} nouveau${nouveaux > 1 ? "x" : ""}, ` +
+              `${doublons} doublon${doublons > 1 ? "s" : ""} ignoré${doublons > 1 ? "s" : ""}`,
+            "resync",
+          );
+        }
+        if (doublons) {
           console.log(
-            `resync : ${res.messages.length} recus, ${nouveaux} nouveaux, ` +
-              `${res.messages.length - nouveaux} doublon(s) ignore(s)`,
+            `resync : ${res.messages.length} recus, ${nouveaux} nouveaux, ${doublons} doublon(s) ignore(s)`,
           );
         }
         // Snapshot : on connait l'etat courant sans attendre que quelqu'un bouge.

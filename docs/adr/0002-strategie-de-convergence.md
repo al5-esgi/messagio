@@ -98,8 +98,22 @@ Une borne serait a poser si les salons devenaient volumineux.
 - **Aucun ordre entre salons.** Le `seq` est croissant **par salon**, pas globalement. C'est
   suffisant ici, puisqu'un fil s'affiche salon par salon, mais interdirait un « fil unifie »
   tous salons confondus sans horodatage supplementaire.
-- **Une instance unique.** Deux instances attribueraient des `seq` concurrents pour le meme
-  salon. C'est le sujet de l'etape 7.
+- **La numerotation ne survit pas au multi-instances, et l'etape 7 ne l'a pas corrige.**
+  Verifie : poster sur `app-a` puis sur `app-b` dans le meme salon attribue **le meme `seq` 2**
+  a deux messages differents. Le `seq` cesse alors d'etre une cle unique, et la deduplication
+  peut **rejeter un message legitime** — un client ayant vu le `seq` 2 de A ignorera le `seq` 2
+  de B. Par ailleurs le store etant en memoire par instance, une resynchronisation demandee a
+  A ne renvoie pas ce qui a ete poste sur B.
+
+  L'etape 7 a distribue le **fan-out** et la **presence** via Redis, pas le domaine : ni le
+  sujet ni le TP ne demandaient un store partage. La parade serait de sortir la numerotation
+  du processus — compteur atomique Redis (`INCR salon:<id>:seq`) et journal partage — ce qui
+  ferait de Redis une dependance de correction et non plus seulement de diffusion. Cela
+  changerait l'ADR-3, qui refuse aujourd'hui d'en faire un point de defaillance critique.
+
+  **Consequence pratique** : la demonstration de convergence se fait sur **une seule instance**.
+  Le multi-instances se demontre separement, sur la presence et le fan-out, qui eux sont
+  corrects.
 
 ## Verification
 
