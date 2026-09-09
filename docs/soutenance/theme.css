@@ -74,6 +74,7 @@
   width: 42px; font-weight: 700; color: var(--accent);
   font-family: ui-monospace, Menlo, monospace;
 }
+.adr td.n { width: 62px; font-size: 0.94em; white-space: nowrap; }
 .traj td.tech { text-align: right; color: var(--tres-faible); font-size: 0.9em; white-space: nowrap; }
 .codes { width: auto; }
 .codes td:first-child { width: 90px; }

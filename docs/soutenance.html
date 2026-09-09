@@ -84,6 +84,7 @@
   width: 42px; font-weight: 700; color: var(--accent);
   font-family: ui-monospace, Menlo, monospace;
 }
+.adr td.n { width: 62px; font-size: 0.94em; white-space: nowrap; }
 .traj td.tech { text-align: right; color: var(--tres-faible); font-size: 0.9em; white-space: nowrap; }
 .codes { width: auto; }
 .codes td:first-child { width: 90px; }
@@ -269,10 +270,10 @@
   </aside>
 </section>
 
-<section><div class="contenu"><h2>Les décisions techniques</h2>
+<section><div class="contenu"><h2>Les ADR — décisions et alternatives écartées</h2>
   <table class="adr">
     <tr>
-      <td class="n">1</td>
+      <td class="n">ADR-1</td>
       <td><b>Socket.IO</b><br><span class="hors">transport</span></td>
       <td>
         <span class="choix">Bidirectionnel, avec rooms, acks et adaptateur multi-instances natifs.</span>
@@ -281,7 +282,7 @@
       </td>
     </tr>
     <tr>
-      <td class="n">2</td>
+      <td class="n">ADR-2</td>
       <td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
       <td>
         <span class="choix">Le serveur numérote chaque message, le client ignore ceux qu'il a déjà vus.
@@ -294,7 +295,7 @@
       </td>
     </tr>
     <tr>
-      <td class="n">3</td>
+      <td class="n">ADR-3</td>
       <td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
       <td>
         <span class="choix">Le client annonce son dernier numéro, le serveur renvoie la suite.</span>
@@ -302,7 +303,7 @@
       </td>
     </tr>
     <tr>
-      <td class="n">4</td>
+      <td class="n">ADR-4</td>
       <td><b>WebRTC pair-à-pair</b><br><span class="hors">visio · hors barème</span></td>
       <td>
         <span class="choix">Le serveur relaie le signaling ; le média va d'un navigateur à l'autre.</span>
