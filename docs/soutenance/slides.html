@@ -150,6 +150,7 @@
       <td class="n">1</td>
       <td><b>Socket.IO</b><br><span class="hors">transport</span></td>
       <td>
+        <span class="choix">Bidirectionnel, avec rooms, acks et adaptateur multi-instances natifs.</span>
         <span class="rejet"><b>Pas SSE</b> — unidirectionnel : un « X écrit… » coûterait un POST par frappe.</span>
         <span class="rejet"><b>Pas WebRTC</b> — aucune autorité centrale : ni <code>seq</code>, ni historique.</span>
       </td>
@@ -158,8 +159,11 @@
       <td class="n">2</td>
       <td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
       <td>
+        <span class="choix">Le serveur numérote chaque message, le client ignore ceux qu'il a déjà vus.
+        Un chat est un <b>journal d'événements immuables</b> : les identifier suffit
+        à tolérer doublons et désordre.</span>
         <span class="rejet"><b>Pas OT ni CRDT</b> — un message est atomique : personne n'édite celui d'un autre.</span>
-        <span class="rejet"><b>Pas snapshot+delta</b> — un delta relatif n'est pas idempotent ; mes messages sont autoportants.</span>
+        <span class="rejet"><b>Pas snapshot+delta</b> — un delta relatif n'est pas idempotent.</span>
         <span class="rejet"><b>Pas de tick</b> — serveur événementiel, sans horloge.</span>
         <span class="rejet"><b>Pas d'horodatage</b> — deux messages peuvent partager une milliseconde.</span>
       </td>
@@ -168,21 +172,22 @@
       <td class="n">3</td>
       <td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
       <td>
-        <span class="rejet"><b>Pas le fan-out Redis</b> — il rend le scaling possible, pas le système résilient : c'est lui qui a introduit la seule panne en cascade.</span>
+        <span class="choix">Le client annonce son dernier numéro, le serveur renvoie la suite.</span>
+        <span class="rejet"><b>Pas le fan-out Redis</b> — il rend le scaling possible, pas le système résilient.</span>
       </td>
     </tr>
     <tr>
       <td class="n">4</td>
       <td><b>WebRTC pair-à-pair</b><br><span class="hors">visio · hors barème</span></td>
       <td>
+        <span class="choix">Le serveur relaie le signaling ; le média va d'un navigateur à l'autre.</span>
         <span class="rejet"><b>Pas de SFU ni MCU</b> — c'est un tête-à-tête : une seule connexion.</span>
-        <span class="rejet"><b>Limite assumée</b> — STUN sans TURN : échec derrière un NAT symétrique.</span>
+        <span class="rejet"><b>Limite</b> — STUN sans TURN : échec derrière un NAT symétrique.</span>
       </td>
     </tr>
   </table>
-  <p class="cle">Le <code>seq</code> est une <b>clé d'idempotence</b>, pas un numéro d'ordre
-  d'application : recevoir deux fois le même message ne fait rien. C'est ce qui permet au
-  serveur de <b>renvoyer large plutôt qu'exact</b>.</p>
+  <p class="cle">Le <code>seq</code> est une <b>clé d'idempotence</b> : recevoir deux fois le
+  même message ne fait rien. C'est ce qui permet de <b>renvoyer large plutôt qu'exact</b>.</p>
   <aside class="notes">
     <b>[6:10 → 7:10]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
     ce que la grille attend explicitement.
