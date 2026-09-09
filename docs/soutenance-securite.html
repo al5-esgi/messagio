@@ -191,6 +191,49 @@ pre.script code { font-family: ui-monospace, Menlo, monospace; white-space: pre;
 
 /* Etat d'un job dans le tableau du pipeline. */
 .reveal table td.ou, .reveal table td.rejet { font-weight: 700; text-align: center; }
+
+/* ---------------------------------------------------------------------------
+   Aeration. Le theme partage centre le contenu dans une boite de 600 px
+   (`justify-content: center`), ce qui tasse les slides denses au milieu de
+   l'ecran en laissant du vide en haut et en bas. Ce deck a plus de contenu par
+   slide que celui du temps reel : on part du haut et on respire.
+   --------------------------------------------------------------------------- */
+.contenu {
+  height: 640px;
+  justify-content: center;   /* equilibre haut/bas ; l'aeration vient des marges ci-dessous */
+}
+
+/* Le titre porte la slide : il lui faut de l'air en dessous. */
+.reveal h2 { margin: 0 0 26px; padding-bottom: 12px; }
+.reveal h3 { margin: 0 0 12px; }
+
+/* Les paragraphes courants et l'accroche. */
+.reveal p { line-height: 1.62; margin: 0 0 18px; }
+.reveal .intro { margin-bottom: 26px; line-height: 1.6; }
+
+/* Colonnes et cartes : plus d'espace entre les blocs et a l'interieur. */
+.deux { gap: 34px; }
+.cartes { gap: 18px; }
+.cartes .carte { padding: 18px 20px; }
+.cartes .carte p { margin-bottom: 12px; }
+.cartes .carte p:last-child { margin-bottom: 0; }
+
+/* Listes : le pas entre items etait le plus serre de tous. */
+.reveal ul.serre li, .reveal ol.serre li { margin-bottom: 11px; line-height: 1.55; }
+.reveal ul, .reveal ol { margin-bottom: 18px; }
+
+/* Tableaux : des lignes plus hautes se lisent de loin. */
+.reveal table { margin: 6px 0 20px; }
+.reveal table td { padding: 12px 12px; }
+.reveal table th { padding: 11px 12px; }
+
+/* L'encadre de conclusion, systematiquement en bas de slide. */
+.cle { margin-top: 8px; padding: 16px 20px; line-height: 1.6; }
+
+/* La chaine des findings et les blocs de commande. */
+.chaine { margin: 26px 0; gap: 14px; }
+.chaine > div:not(.fleche) { padding: 18px 18px; }
+pre.script { margin: 18px 0; padding: 16px 18px; line-height: 1.75; }
 </style>
   </head>
   <body>
@@ -577,7 +620,7 @@ sub=alice   (membre)     -> dev : join ACCEPTE, 2 messages lus</code></pre>
         transitionSpeed: "fast",
         width: 1280,
         height: 720,
-        margin: 0.07,
+        margin: 0.05,
       });
     </script>
   </body>
