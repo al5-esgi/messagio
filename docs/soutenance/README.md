@@ -21,25 +21,32 @@ réseau — il s'ouvre par double-clic, y compris sur une machine qui n'est pas 
 La vue orateur ouvre une seconde fenêtre : à mettre sur votre écran, la principale sur le
 vidéoprojecteur. **Chaque slide porte son créneau horaire** dans les notes.
 
-## Minutage — 10 min, questions non comprises
+## Minutage — aligné sur la grille
 
-| Bloc | Créneau |
-|---|---|
-| Constat + séances 1 à 3 | 0:00 → 2:05 |
-| Socket.IO, rooms, présence | 2:05 → 4:15 |
-| Convergence + scaling | 4:15 → 6:10 |
-| WebRTC + chaos | 6:10 → 8:00 |
-| Démonstration | 8:00 → 10:00 |
+La grille impose **14 min chrono : 8-9 min de présentation + démo, puis 5-6 min de Q&A notée**
+(4 questions tirées au sort, 8 points). Le deck vise **8 min 30**.
 
-**11 slides : 8 min d'exposé, 2 min de démo.** Les notes de chaque slide portent son créneau ;
-si vous êtes en avance ou en retard, la vue orateur vous le dira.
+| Bloc | Créneau | Ce que la grille attend |
+|---|---|---|
+| Sujet et architecture | 0:00 → 2:35 | « quel domaine, quels canaux/rooms, quel transport » |
+| Point de départ | 2:35 → 3:25 | contexte |
+| **Démonstration** | 3:25 → 6:25 | nominal 2 navigateurs · **le piège** · coupure/reprise |
+| Choix techniques | 6:25 → 7:55 | ADR-1, ADR-2, ADR-3 : options écartées argumentées |
+| Mesures et limites | 7:55 → 8:30 | prépare la Q&A |
 
-La dernière slide reste affichée pendant les questions : elle porte les trois ADR et les
-limites connues, c'est-à-dire de quoi répondre à la moitié de ce qu'on vous demandera.
+## La démo est notée 7 points sur 12 — à répéter
 
-Deux slides sont volontairement plus lentes que les autres, parce qu'elles portent le fond :
-**« Socket.IO n'est pas WebSocket »** et **« WebRTC : pair-à-pair, mais pas sans serveur »**.
-Ne les expédiez pas.
+| Scène | Critère | Points |
+|---|---|---|
+| 1 · nominal à 2 navigateurs, présence, refus sur `#dev` | rooms, présence, reconnexion | 3 |
+| 2 · **le piège de concurrence, reproduit en direct** | convergence visible entre 2 clients | **3** |
+| 3 · coupure et reprise | robustesse sous coupure réseau | 2 |
+| démarrage `docker compose up` | mesuré à **10 s** | 2 |
+
+> La scène 2 est celle qui rapporte le plus, et c'est la seule que la grille exige de voir
+> **reproduite en direct** : « le cas limite est reproduit en direct et la stratégie fait
+> converger les deux clients de façon visible ». Les numéros `#seq` affichés sur chaque
+> message sont ce qui rend la convergence visible à l'écran — pointez-les.
 
 ## Avant de commencer, dans cet ordre
 
@@ -47,17 +54,21 @@ Ne les expédiez pas.
 docker compose up --build -d
 ```
 
+Mesuré : **10 secondes** jusqu'à ce que le proxy et les deux instances répondent.
+La grille accorde 2 points pour un démarrage sous 2 minutes, et prévoit que chacun lance sa
+pile **avant le premier passage** — faites-le.
+
 Puis, tout préparé **avant** d'entrer dans la salle :
 
 1. deux fenêtres côte à côte : `localhost:3001/?membre=alice` et `localhost:3002/?membre=bob`
    (les badges *instance A* / *instance B* sont la preuve visuelle du scaling) ;
-2. un onglet sur `localhost:3001/appel.html?membre=alice` et un second `?membre=bob` ;
-3. un terminal prêt avec `bash chaos.sh coupure 5` déjà tapé, non exécuté ;
-4. la caméra testée sur le port exact que vous montrerez — les permissions sont par origine,
-   et `:3000`, `:3001`, `:19001` sont trois origines différentes.
+2. un troisième onglet prêt sur `?membre=carol&salon=dev` pour la scène du refus ;
+3. un terminal avec `npm run scenario` et `bash chaos.sh coupure 5` **déjà tapés**, non exécutés ;
+4. la caméra testée sur le port exact que vous montrerez — les permissions sont par origine.
 
-> Si un point de la démo échoue : ne déboguez pas en direct. Dites ce qui aurait dû se passer,
-> renvoyez au `docs/rapport-chaos.md` qui porte les mesures, et passez au point suivant.
+> **Règle de backup de la grille** : si l'environnement ne démarre pas en 2 min, vous présentez
+> avec des captures horodatées et le critère « démo live » passe à 1 point maximum. D'où les
+> captures dans `docs/captures/` — gardez-les ouvertes dans un onglet.
 
 ## Modifier
 
@@ -69,7 +80,7 @@ node docs/soutenance/build.mjs
 
 | Fichier | Rôle |
 |---|---|
-| `slides.html` | le contenu des 11 slides et les notes de l'orateur |
+| `slides.html` | le contenu des 7 slides et les notes de l'orateur |
 | `theme.css` | le thème clair, verrouillé pour la vidéoprojection |
 | `gabarit.html` | la coquille et la configuration de reveal |
 | `build.mjs` | inline les dépendances et enveloppe le contenu pour le centrage |

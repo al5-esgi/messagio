@@ -1,0 +1,845 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>Grille de soutenance - Projet Web temps r&eacute;el</title>
+    <style>
+      /* From extension vscode.github */
+      /*---------------------------------------------------------------------------------------------
+ *  Copyright (c) Microsoft Corporation. All rights reserved.
+ *  Licensed under the MIT License. See License.txt in the project root for license information.
+ *--------------------------------------------------------------------------------------------*/
+
+      .vscode-dark img[src$="\#gh-light-mode-only"],
+      .vscode-light img[src$="\#gh-dark-mode-only"],
+      .vscode-high-contrast:not(.vscode-high-contrast-light)
+        img[src$="\#gh-light-mode-only"],
+      .vscode-high-contrast-light img[src$="\#gh-dark-mode-only"] {
+        display: none;
+      }
+
+      /* From extension jebbs.markdown-extended */
+      @font-face {
+        font-family: "Material Icons";
+        font-style: normal;
+        font-weight: 400;
+        src:
+          local("Material Icons"),
+          local("MaterialIcons-Regular"),
+          url("data:application/x-font-woff;charset=utf-8;base64,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")
+            format("woff");
+      }
+
+      .admonition {
+        box-shadow:
+          0 2px 2px 0 rgba(0, 0, 0, 0.14),
+          0 1px 5px 0 rgba(0, 0, 0, 0.12),
+          0 3px 1px -2px rgba(0, 0, 0, 0.2);
+        position: relative;
+        margin: 1.5625em 0;
+        padding: 0 1.2rem;
+        border-left: 0.4rem solid rgba(68, 138, 255, 0.8);
+        border-radius: 0.2rem;
+        background-color: rgba(255, 255, 255, 0.05);
+        overflow: auto;
+      }
+
+      .admonition > p {
+        margin-top: 0.8rem;
+      }
+
+      .admonition > .admonition-title {
+        margin: 0 -1.2rem;
+        padding: 0.8rem 1.2rem 0.8rem 3.6rem;
+        border-bottom: 1px solid rgba(68, 138, 255, 0.2);
+        background-color: rgba(68, 138, 255, 0.1);
+        font-weight: 700;
+      }
+
+      .admonition > .admonition-title:before {
+        position: absolute;
+        left: 1.2rem;
+        font-size: 1.5rem;
+        color: rgba(68, 138, 255, 0.8);
+        content: "\E3C9";
+      }
+
+      .admonition > .admonition-title:before {
+        font-family: Material Icons;
+        font-style: normal;
+        font-variant: normal;
+        font-weight: 400;
+        line-height: 2rem;
+        text-transform: none;
+        white-space: nowrap;
+        word-wrap: normal;
+        direction: ltr;
+      }
+
+      .admonition.summary,
+      .admonition.abstract,
+      .admonition.tldr {
+        border-left-color: rgba(0, 176, 255, 0.8);
+      }
+
+      .admonition.summary > .admonition-title,
+      .admonition.abstract > .admonition-title,
+      .admonition.tldr > .admonition-title {
+        background-color: rgba(0, 176, 255, 0.1);
+        border-bottom-color: rgba(0, 176, 255, 0.2);
+      }
+
+      .admonition.summary > .admonition-title:before,
+      .admonition.abstract > .admonition-title:before,
+      .admonition.tldr > .admonition-title:before {
+        color: rgba(0, 176, 255, 1);
+        content: "\E8D2";
+      }
+
+      .admonition.hint,
+      .admonition.tip {
+        border-left-color: rgba(0, 191, 165, 0.8);
+      }
+
+      .admonition.hint > .admonition-title,
+      .admonition.tip > .admonition-title {
+        background-color: rgba(0, 191, 165, 0.1);
+        border-bottom-color: rgba(0, 191, 165, 0.2);
+      }
+
+      .admonition.hint > .admonition-title:before,
+      .admonition.tip > .admonition-title:before {
+        color: rgba(0, 191, 165, 1);
+        content: "\E80E";
+      }
+
+      .admonition.info,
+      .admonition.todo {
+        border-left-color: rgba(0, 184, 212, 0.8);
+      }
+
+      .admonition.info > .admonition-title,
+      .admonition.todo > .admonition-title {
+        background-color: rgba(0, 184, 212, 0.1);
+        border-bottom-color: rgba(0, 184, 212, 0.2);
+      }
+
+      .admonition.info > .admonition-title:before,
+      .admonition.todo > .admonition-title:before {
+        color: rgba(0, 184, 212, 1);
+        content: "\E88E";
+      }
+
+      .admonition.success,
+      .admonition.check,
+      .admonition.done {
+        border-left-color: rgba(0, 200, 83, 0.8);
+      }
+
+      .admonition.success > .admonition-title,
+      .admonition.check > .admonition-title,
+      .admonition.done > .admonition-title {
+        background-color: rgba(0, 200, 83, 0.1);
+        border-bottom-color: rgba(0, 200, 83, 0.2);
+      }
+
+      .admonition.success > .admonition-title:before,
+      .admonition.check > .admonition-title:before,
+      .admonition.done > .admonition-title:before {
+        color: rgba(0, 200, 83, 1);
+        content: "\E876";
+      }
+
+      .admonition.question,
+      .admonition.help,
+      .admonition.faq {
+        border-left-color: rgba(100, 221, 23, 0.8);
+      }
+
+      .admonition.question > .admonition-title,
+      .admonition.help > .admonition-title,
+      .admonition.faq > .admonition-title {
+        background-color: rgba(100, 221, 23, 0.1);
+        border-bottom-color: rgba(100, 221, 23, 0.2);
+      }
+
+      .admonition.question > .admonition-title:before,
+      .admonition.help > .admonition-title:before,
+      .admonition.faq > .admonition-title:before {
+        color: rgba(100, 221, 23, 1);
+        content: "\E887";
+      }
+
+      .admonition.warning,
+      .admonition.attention,
+      .admonition.caution {
+        border-left-color: rgba(255, 145, 0, 0.8);
+      }
+
+      .admonition.warning > .admonition-title,
+      .admonition.attention > .admonition-title,
+      .admonition.caution > .admonition-title {
+        background-color: rgba(255, 145, 0, 0.1);
+        border-bottom-color: rgba(255, 145, 0, 0.2);
+      }
+
+      .admonition.attention > .admonition-title:before {
+        color: rgba(255, 145, 0, 1);
+        content: "\E417";
+      }
+
+      .admonition.warning > .admonition-title:before,
+      .admonition.caution > .admonition-title:before {
+        color: rgba(255, 145, 0, 1);
+        content: "\E002";
+      }
+
+      .admonition.failure,
+      .admonition.fail,
+      .admonition.missing {
+        border-left-color: rgba(255, 82, 82, 0.8);
+      }
+
+      .admonition.failure > .admonition-title,
+      .admonition.fail > .admonition-title,
+      .admonition.missing > .admonition-title {
+        background-color: rgba(255, 82, 82, 0.1);
+        border-bottom-color: rgba(255, 82, 82, 0.2);
+      }
+
+      .admonition.failure > .admonition-title:before,
+      .admonition.fail > .admonition-title:before,
+      .admonition.missing > .admonition-title:before {
+        color: rgba(255, 82, 82, 1);
+        content: "\E14C";
+      }
+
+      .admonition.danger,
+      .admonition.error,
+      .admonition.bug {
+        border-left-color: rgba(255, 23, 68, 0.8);
+      }
+
+      .admonition.danger > .admonition-title,
+      .admonition.error > .admonition-title,
+      .admonition.bug > .admonition-title {
+        background-color: rgba(255, 23, 68, 0.1);
+        border-bottom-color: rgba(255, 23, 68, 0.2);
+      }
+
+      .admonition.danger > .admonition-title:before {
+        color: rgba(255, 23, 68, 1);
+        content: "\E3E7";
+      }
+
+      .admonition.error > .admonition-title:before {
+        color: rgba(255, 23, 68, 1);
+        content: "\E14C";
+      }
+
+      .admonition.bug > .admonition-title:before {
+        color: rgba(255, 23, 68, 1);
+        content: "\E868";
+      }
+
+      .admonition.example,
+      .admonition.snippet {
+        border-left-color: rgba(0, 184, 212, 0.8);
+      }
+
+      .admonition.example > .admonition-title,
+      .admonition.snippet > .admonition-title {
+        background-color: rgba(0, 184, 212, 0.1);
+        border-bottom-color: rgba(0, 184, 212, 0.2);
+      }
+
+      .admonition.example > .admonition-title:before,
+      .admonition.snippet > .admonition-title:before {
+        color: rgba(0, 184, 212, 1);
+        content: "\E242";
+      }
+
+      .admonition.quote,
+      .admonition.cite {
+        border-left-color: rgba(158, 158, 158, 0.8);
+      }
+
+      .admonition.quote > .admonition-title,
+      .admonition.cite > .admonition-title {
+        background-color: rgba(158, 158, 158, 0.1);
+        border-bottom-color: rgba(158, 158, 158, 0.2);
+      }
+
+      .admonition.quote > .admonition-title:before,
+      .admonition.cite > .admonition-title:before {
+        color: rgba(158, 158, 158, 1);
+        content: "\E244";
+      }
+      .vscode-light kbd,
+      .vscode-dark kbd,
+      .vscode-high-contrast kbd {
+        display: inline-block;
+        padding: 3px 5px;
+        font:
+          11px "SFMono-Regular",
+          Consolas,
+          "Liberation Mono",
+          Menlo,
+          Courier,
+          monospace;
+        line-height: 10px;
+        vertical-align: middle;
+        border: solid 1px #d1d5da;
+        border-bottom-color: #c6cbd1;
+        border-radius: 3px;
+        box-shadow: inset 0 -1px 0 #c6cbd1;
+      }
+
+      .vscode-light kbd {
+        color: #444d56;
+        background-color: #fafbfc;
+      }
+    </style>
+
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/markdown.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/gh/Microsoft/vscode/extensions/markdown-language-features/media/highlight.css"
+    />
+    <style>
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe WPC", "Segoe UI", system-ui,
+          "Ubuntu", "Droid Sans", sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+    </style>
+    <style>
+      .task-list-item {
+        list-style-type: none;
+      }
+
+      .task-list-item-checkbox {
+        margin-left: -20px;
+        vertical-align: middle;
+        pointer-events: none;
+      }
+    </style>
+    <style>
+      :root {
+        --color-note: #0969da;
+        --color-tip: #1a7f37;
+        --color-warning: #9a6700;
+        --color-severe: #bc4c00;
+        --color-caution: #d1242f;
+        --color-important: #8250df;
+      }
+    </style>
+    <style>
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --color-note: #2f81f7;
+          --color-tip: #3fb950;
+          --color-warning: #d29922;
+          --color-severe: #db6d28;
+          --color-caution: #f85149;
+          --color-important: #a371f7;
+        }
+      }
+    </style>
+    <style>
+      .markdown-alert {
+        padding: 0.5rem 1rem;
+        margin-bottom: 16px;
+        color: inherit;
+        border-left: 0.25em solid #888;
+      }
+
+      .markdown-alert > :first-child {
+        margin-top: 0;
+      }
+
+      .markdown-alert > :last-child {
+        margin-bottom: 0;
+      }
+
+      .markdown-alert .markdown-alert-title {
+        display: flex;
+        font-weight: 500;
+        align-items: center;
+        line-height: 1;
+      }
+
+      .markdown-alert .markdown-alert-title .octicon {
+        margin-right: 0.5rem;
+        display: inline-block;
+        overflow: visible !important;
+        vertical-align: text-bottom;
+        fill: currentColor;
+      }
+
+      .markdown-alert.markdown-alert-note {
+        border-left-color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-note .markdown-alert-title {
+        color: var(--color-note);
+      }
+
+      .markdown-alert.markdown-alert-important {
+        border-left-color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-important .markdown-alert-title {
+        color: var(--color-important);
+      }
+
+      .markdown-alert.markdown-alert-warning {
+        border-left-color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-warning .markdown-alert-title {
+        color: var(--color-warning);
+      }
+
+      .markdown-alert.markdown-alert-tip {
+        border-left-color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-tip .markdown-alert-title {
+        color: var(--color-tip);
+      }
+
+      .markdown-alert.markdown-alert-caution {
+        border-left-color: var(--color-caution);
+      }
+
+      .markdown-alert.markdown-alert-caution .markdown-alert-title {
+        color: var(--color-caution);
+      }
+    </style>
+  </head>
+  <body class="vscode-body vscode-light">
+    <span
+      id="markdown-mermaid"
+      aria-hidden="true"
+      data-config='{"darkModeTheme":"vscode","lightModeTheme":"vscode","maxTextSize":50000,"clickDrag":"alt","showControls":"onHoverOrFocus","resizable":true,"maxHeight":""}'
+    ></span>
+    <h1 id="grille-de-soutenance---projet-web-temps-réel">
+      Grille de soutenance - Projet Web temps réel
+    </h1>
+    <p><strong>5ESGI-AL - Séance 10 - Soutenances individuelles</strong></p>
+    <h2 id="organisation-de-la-séance">Organisation de la séance</h2>
+    <ul>
+      <li>
+        <strong>6 soutenances au total</strong> :
+        <strong>5 en séance 10</strong>, la <strong>6e hors créneau</strong> (à
+        programmer, même format et même barème).
+      </li>
+      <li>
+        <strong>14 min chrono</strong> par passage :
+        <strong>8-9 min de présentation + démo</strong>,
+        <strong>5-6 min de Q&amp;A notée</strong> (4 questions tirées au sort -
+        2 fondamentaux + 2 cas limite -, 2 pts chacune).
+      </li>
+      <li>
+        Ordre <strong>tiré au sort</strong> en début de séance. Timing strict
+        (sablier visible). Chaque étudiant a lancé son
+        <code>docker compose up</code> (ou <code>npx tsx</code>)
+        <strong>avant</strong> le premier passage.
+      </li>
+    </ul>
+    <blockquote>
+      <p>
+        <strong>Créneau global</strong> : 5 × 16 min (14 min au chrono + 2 min
+        de bascule de poste) = 80 min,
+      </p>
+      <ul>
+        <li>
+          5 min de cadrage et tirage de l'ordre + 5 min de clôture = la séance
+          de 1h30.
+        </li>
+      </ul>
+    </blockquote>
+    <blockquote>
+      <p>
+        <strong>Règle de backup technique</strong> : si le lancement de
+        l'environnement échoue en début de passage (≤ 2 min de tentative),
+        l'étudiant présente en mode backup (processus déjà lancés, captures
+        horodatées de la dernière démo fonctionnelle). Le critère « Démo live »
+        passe alors sur un barème réduit (max 1 pt). Si rien ne peut être montré
+        : 0 sur ce critère. Le reste continue normalement.
+      </p>
+    </blockquote>
+    <h2 id="déroulé-attendu-de-la-présentation">
+      Déroulé attendu de la présentation
+    </h2>
+    <ol>
+      <li>
+        <strong>Le sujet et l'architecture (2-3 min)</strong> : quel domaine,
+        quels canaux/rooms, quel transport temps réel retenu.
+      </li>
+      <li>
+        <strong>Démo (3-4 min)</strong> : scénario nominal à 2 navigateurs,
+        <strong>puis le cas de concurrence</strong> du sujet (le « piège ») et
+        sa résolution, <strong>puis</strong> une coupure/reprise réseau.
+      </li>
+      <li>
+        <strong>Choix techniques (1-2 min)</strong> : les ADR - technique de
+        push (ADR-1), stratégie de convergence (ADR-2), stratégie de robustesse
+        (ADR-3) : quelle option, quelles alternatives écartées, pourquoi.
+      </li>
+    </ol>
+    <hr />
+    <h2 id="grille-de-notation-sur-20--12-pts-projet--8-pts-qa">
+      Grille de notation (sur 20) = 12 pts projet + 8 pts Q&amp;A
+    </h2>
+    <h3 id="1-serveur-temps-réel--rooms-présence-reconnexion---3-pts">
+      1. Serveur temps réel : rooms, présence, reconnexion - 3 pts
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Description</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Excellent</td>
+          <td>
+            Rooms cohérentes avec le sujet, présence par room avec délai de
+            grâce, reconnexion client démontrée sans perte visible
+          </td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Bien</td>
+          <td>
+            Rooms et présence fonctionnelles, reconnexion gérée mais avec un
+            défaut mineur
+          </td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Moyen</td>
+          <td>Rooms ou présence partielles, reconnexion fragile</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Insuffisant</td>
+          <td>Pas de rooms exploitables ou pas de présence</td>
+          <td>0</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="2-le--piège--de-concurrence-du-sujet---3-pts">
+      2. Le « piège » de concurrence du sujet - 3 pts
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Description</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Excellent</td>
+          <td>
+            Le cas limite est reproduit en direct et la stratégie (CRDT /
+            snapshot+delta / tick / dernière écriture horodatée) fait converger
+            les deux clients de façon visible
+          </td>
+          <td>3</td>
+        </tr>
+        <tr>
+          <td>Bien</td>
+          <td>
+            La stratégie est en place et converge, mais le cas limite n'est pas
+            démontré en direct (expliqué seulement)
+          </td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Moyen</td>
+          <td>Tentative de traitement, convergence incomplète ou non fiable</td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Insuffisant</td>
+          <td>Aucun traitement de la concurrence</td>
+          <td>0</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="3-adr--technique-de-push-et-stratégie-de-convergence---2-pts">
+      3. ADR : technique de push et stratégie de convergence - 2 pts
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Description</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Excellent</td>
+          <td>
+            ADR-1 et ADR-2 présents, décision justifiée, alternatives écartées
+            argumentées
+          </td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Moyen</td>
+          <td>
+            Les ADR existent mais la justification est superficielle, ou une
+            alternative n'est pas discutée
+          </td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Insuffisant</td>
+          <td>ADR absents ou vides</td>
+          <td>0</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="4-élément-de-robustesse---2-pts">
+      4. Élément de robustesse - 2 pts
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Description</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Excellent</td>
+          <td>
+            Reconnexion + resynchronisation (snapshot ou rejeu du delta)
+            <strong>ou</strong> fan-out multi-instances via Redis, démontré en
+            direct sous coupure réseau
+          </td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Moyen</td>
+          <td>
+            L'élément est présent mais démontré partiellement ou seulement
+            expliqué
+          </td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Insuffisant</td>
+          <td>Rien de robuste face à une coupure</td>
+          <td>0</td>
+        </tr>
+      </tbody>
+    </table>
+    <h3 id="5-démo-live-à-2-navigateurs--démarrage---2-pts">
+      5. Démo live à 2 navigateurs + démarrage - 2 pts
+    </h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Niveau</th>
+          <th>Description</th>
+          <th>Pts</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Excellent</td>
+          <td>
+            <code>docker compose up</code> (ou <code>npx tsx</code>) démarre
+            tout en moins de 2 min, démo jouable à 2 navigateurs sans accroc
+          </td>
+          <td>2</td>
+        </tr>
+        <tr>
+          <td>Moyen</td>
+          <td>
+            Démarrage laborieux ou démo à 2 navigateurs partiellement
+            fonctionnelle
+          </td>
+          <td>1</td>
+        </tr>
+        <tr>
+          <td>Insuffisant</td>
+          <td>Rien de démontrable en direct (voir règle de backup)</td>
+          <td>0</td>
+        </tr>
+      </tbody>
+    </table>
+    <p><strong>Sous-total projet : /12</strong></p>
+    <hr />
+    <h2 id="qa-notée---8-pts-4-questions--2-pts">
+      Q&amp;A notée - 8 pts (4 questions × 2 pts)
+    </h2>
+    <p>
+      <strong>Tirage stratifié - obligatoire</strong> :
+      <strong>2 [F] + 2 [C]</strong>
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Marqueur</th>
+          <th>Strate</th>
+          <th>Ce qui est évalué</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>[F]</strong></td>
+          <td>Fondamentaux</td>
+          <td>
+            Restitution du cours et application directe : l'étudiant doit
+            savoir.
+          </td>
+        </tr>
+        <tr>
+          <td><strong>[C]</strong></td>
+          <td>Cas limite / raisonnement</td>
+          <td>
+            Situation non traitée telle quelle en TP : l'étudiant raisonne à
+            chaud.
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Barème par question</strong> : Excellent (exact, précis,
+      argumenté) = 2 · Partiel (correct mais imprécis ou non justifié) = 1 ·
+      Insuffisant (absent, hors sujet, faux) = 0.
+    </p>
+    <p><strong>Deux règles qui priment</strong> :</p>
+    <ol>
+      <li>
+        <strong>Questions à deux volets (⑂)</strong> : 2 volets traités = 2 ; 1
+        volet correct et justifié = 1 ; 1 volet imprécis ou aucun = 0. Une
+        demande de justification n'est pas un second volet.
+      </li>
+      <li>
+        <strong>Questions de diagnostic (au conditionnel)</strong> : évaluent le
+        raisonnement, pas ce qui a été instrumenté. Une hypothèse correcte vaut
+        le plein même sans rien branché. Ce qui a réellement été mis en place
+        est noté <strong>une seule fois</strong>, au critère projet
+        correspondant.
+      </li>
+    </ol>
+    <p><strong>Sous-total Q&amp;A : /8</strong></p>
+    <hr />
+    <h2 id="feuille-de-notation-individuelle">
+      Feuille de notation individuelle
+    </h2>
+    <p>
+      <strong>Étudiant :</strong> ______________________
+      <strong>Sujet :</strong> ______________
+      <strong>Date :</strong> ____________
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Critère</th>
+          <th>Max</th>
+          <th>Note</th>
+          <th>Observations</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1. Serveur : rooms, présence, reconnexion</td>
+          <td>3</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>2. Le « piège » de concurrence du sujet</td>
+          <td>3</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>3. ADR push et convergence</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>4. Élément de robustesse</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>5. Démo live 2 navigateurs + démarrage</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><strong>Sous-total projet</strong></td>
+          <td><strong>12</strong></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Question 1 - [F] (n°___)</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Question 2 - [F] (n°___)</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Question 3 - [C] (n°___)</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>Question 4 - [C] (n°___)</td>
+          <td>2</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><strong>Sous-total Q&amp;A</strong></td>
+          <td><strong>8</strong></td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td><strong>Total</strong></td>
+          <td><strong>20</strong></td>
+          <td></td>
+          <td></td>
+        </tr>
+      </tbody>
+    </table>
+    <p>
+      <strong>Questions posées (numéros tirés) :</strong> 1. ___ 2. ___ 3. ___
+      4. ___
+    </p>
+    <p><strong>Commentaire général :</strong></p>
+  </body>
+</html>
+
