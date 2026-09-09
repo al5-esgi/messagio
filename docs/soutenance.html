@@ -260,9 +260,11 @@
       WebRTC, aucune autorité centrale : ni <code>seq</code>, ni historique, ni contrôle
       d'appartenance.</td></tr>
     <tr><td class="n">2</td><td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
-      <td><b>Écarté :</b> OT et CRDT — un message est atomique et immuable, la transformation
-      ne servirait jamais. Snapshot+delta : un chat a besoin de l'historique, pas du dernier
-      état. Horodatage : deux messages peuvent partager une milliseconde.</td></tr>
+      <td><b>Écarté — les quatre familles :</b> <b>OT / CRDT</b>, un message est atomique,
+      personne n'édite celui d'un autre. <b>Snapshot+delta</b>, un delta relatif (« +5 ») n'est
+      pas idempotent — mes messages sont autoportants. <b>Tick</b>, mon serveur est événementiel,
+      sans horloge — c'est le stub qui diffusait toutes les 500 ms. <b>Horodatage</b>, deux
+      messages peuvent partager une milliseconde.</td></tr>
     <tr><td class="n">3</td><td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
       <td><b>Écarté :</b> le fan-out Redis comme robustesse principale — il rend le scaling
       possible, pas le système résilient. C'est même lui qui a introduit la seule panne en
@@ -283,8 +285,13 @@
     à l'ADR-2, pas à l'ADR-3.
     <br><br>
     Si on objecte que ma stratégie n'est pas dans la liste du barème : c'est la déduplication
-    par numéro de séquence, la quatrième famille du kit, celle assignée au sujet 3. Un
-    horodatage jouerait le même rôle en moins fiable.
+    par numéro de séquence, la quatrième famille du kit, celle assignée au sujet 3.
+    <br><br>
+    <b>La frontière avec snapshot+delta</b>, si on la demande : là-bas snapshot et delta sont de
+    natures différentes — un état et une modification. Chez moi, les 30 messages du démarrage et
+    les 4 du rejeu sont les <i>mêmes objets</i>, seul le point de départ change. Et un delta
+    relatif exige une livraison exactement-une-fois, alors qu'un message autoporté se
+    déduplique.
     <br><br>
     Sur l'ADR-3, raconter la panne : <code>fetchSockets()</code> rejette si une instance ne
     répond pas, et le rejet non capturé faisait tomber l'instance qui interrogeait. D'où le

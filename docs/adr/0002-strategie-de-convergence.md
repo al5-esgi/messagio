@@ -36,7 +36,8 @@ Ce probleme n'est pas theorique dans ce projet, il a ete constate a chaque etape
 | **CRDT de sequence** | resout le meme probleme qu'OT sans serveur central, au prix de positions denses et de metadonnees par caractere. Or nous **avons** un serveur central qui numerote deja. C'est la strategie du sujet 1 (editeur). |
 | **Boucle autoritaire a tick fixe** | pertinente quand l'etat evolue en continu et doit etre echantillonne (sujet 4, jeu). Un chat est evenementiel : diffuser un etat 20 fois par seconde reproduirait exactement le defaut du stub constate a l'etape 1 (2917 octets deux fois par seconde sans changement). |
 | **Throttle / smoothing** | traite un flux de valeurs continues dont on peut jeter les intermediaires (sujet 5, positions). **Jeter un message de chat est inacceptable.** |
-| **Snapshot + delta numerote** | proche de la retenue, et adaptee aux sujets 2 et 5. Elle transporte un etat courant plutot qu'un journal ; un chat a besoin de l'**historique ordonne**, pas du dernier etat. |
+| **Snapshot + delta numerote** | c'est la plus proche de la retenue, et la confusion est facile. La frontiere est l'**idempotence** : la-bas, snapshot et delta sont de natures differentes — un etat, et une *modification* de cet etat. Un delta relatif (« +5 sur le volume ») applique deux fois donne 110 au lieu de 105 : il exige une livraison exactement-une-fois. Nos messages sont **autoportants** — chacun transporte son texte, son auteur et son numero — donc les recevoir deux fois est sans effet. Adaptee aux sujets 2 et 5, ou l'etat courant remplace le precedent. |
+| **Tick autoritaire** *(deja cite)* | a ne pas confondre non plus : c'est une boucle a **frequence fixe**, qui emet qu'il y ait eu des evenements ou non. Notre serveur est evenementiel. Anecdote utile : le stub de depart etait un pseudo-tick, qui rediffusait l'etat complet toutes les 500 ms — 2917 octets pour rien. |
 
 ## Decision
 
@@ -53,6 +54,12 @@ d'evenements immuables**, pas un etat mutable partage. Trois raisons concretes :
    recevoir deux fois le meme est sans effet. Cela rend le **renvoi sur**, ce qui transforme le
    probleme : on peut renvoyer largement plutot que de calculer exactement ce qui manque.
 3. **Le cout est negligeable** : un entier par message, et un `Set` cote client.
+
+> **Pourquoi ce n'est pas du snapshot+delta, malgre les apparences.** L'ack du `join` renvoie
+> 30 messages au premier chargement et seulement le delta a la reconnexion — mais ce sont **les
+> memes objets** dans les deux cas, avec les memes `seq`, traites par le meme code client. Seul
+> le point de depart change. Dans snapshot+delta, le snapshot et le delta ont des types
+> differents et le second doit s'appliquer exactement une fois sur le premier.
 
 ### Branchement
 
