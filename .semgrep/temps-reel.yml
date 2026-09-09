@@ -1,0 +1,63 @@
+# Regles ciblees pour un service temps reel. p/ci est un plancher : il ne voit ni le secret
+# de handshake en dur, ni un cors origin: "*", ni un jwt.verify() sans liste d'algorithmes.
+# La derniere regle est la mienne, derivee de la ligne STRIDE #3 (priorite H) du threat model.
+rules:
+  - id: rt-hardcoded-handshake-secret
+    message: >-
+      Secret de signature JWT en dur. Le canal s'authentifie au handshake :
+      ce litteral donne a quiconque lit le depot le pouvoir de forger un token.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-798: Use of Hard-coded Credentials"
+      owasp: "A07:2021 Identification and Authentication Failures"
+    patterns:
+      - pattern: 'const $NAME = "..."'
+      - metavariable-regex:
+          metavariable: $NAME
+          regex: (?i).*(secret|passphrase|privatekey|jwt).*
+
+  - id: rt-socketio-cors-wildcard
+    message: >-
+      Serveur Socket.IO ouvert a toutes les origines : le controle d'origine
+      du handshake est neutralise.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-942: Permissive Cross-domain Policy with Untrusted Domains"
+    patterns:
+      - pattern-either:
+          - pattern: 'new Server(..., {..., cors: {..., origin: "*", ...}, ...})'
+          - pattern: 'new Server({..., cors: {..., origin: "*", ...}, ...})'
+
+  - id: rt-jwt-verify-sans-algorithms
+    message: >-
+      jwt.verify() sans liste blanche d'algorithmes : l'algorithme est lu dans
+      l'en-tete du token, donc choisi par l'appelant.
+    languages: [typescript, javascript]
+    severity: WARNING
+    metadata:
+      cwe: "CWE-347: Improper Verification of Cryptographic Signature"
+    patterns:
+      - pattern: 'jwt.verify($T, $S)'
+      - pattern-not: 'jwt.verify($T, $S, {..., algorithms: [...], ...})'
+
+  # --- Regle personnelle, issue de la ligne STRIDE #3 (Elevation of privilege, priorite H).
+  # Le canal Socket.IO controle l'appartenance au salon via peutRejoindre(). Les routes REST
+  # qui manipulent les MEMES salons ne le font pas : elles constituent une porte parallele
+  # non gardee. Aucune regle du catalogue p/ci ne peut connaitre cette regle metier.
+  - id: rt-route-salon-sans-controle-appartenance
+    message: >-
+      Route REST sur une ressource de salon sans appel a peutRejoindre() : l'autorisation
+      appliquee sur le canal temps reel est contournable par HTTP.
+    languages: [typescript, javascript]
+    severity: ERROR
+    metadata:
+      cwe: "CWE-862: Missing Authorization"
+      owasp: "A01:2021 Broken Access Control"
+    patterns:
+      - pattern: 'app.$METHOD($PATH, $HANDLER)'
+      - metavariable-regex:
+          metavariable: $PATH
+          regex: .*salons.*
+      - pattern-not-regex: '(?s).*peutRejoindre.*'
