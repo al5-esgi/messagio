@@ -11,3 +11,12 @@
 # retirerait pas du passe - c'est la meme lecon que le layer Docker immuable du bloc A.
 # A revoir a la rotation du secret prevue en ligne F-01 du plan de remediation.
 docs/security/rapport-audit.md:generic-api-key:90
+
+# 2026-09-09 docs/soutenance-securite/regression.patch.ts:8 et :9 - charge de la regression
+# de demonstration de la soutenance (scene 2). Ce sont des chaines aleatoires sans valeur :
+# elles n'ouvrent aucun acces, nulle part. FAUX POSITIF au sens strict.
+# L'exclusion porte sur le chemin de DOCUMENTATION uniquement. Des que ce fichier est copie
+# en src/deploiement.ts pendant la demo, il n'est plus couvert et gitleaks le detecte : c'est
+# exactement ce que la scene 2 doit montrer.
+docs/soutenance-securite/regression.patch.ts:generic-api-key:8
+docs/soutenance-securite/regression.patch.ts:generic-api-key:9
