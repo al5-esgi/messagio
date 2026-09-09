@@ -31,9 +31,9 @@ La grille impose **14 min chrono : 8-9 min de présentation + démo, puis 5-6 mi
 | Sujet et architecture | 0:00 → 2:30 | « quel domaine, quels canaux/rooms, quel transport » |
 | Point de départ | 2:30 → 3:10 | contexte |
 | **Démonstration** | 3:10 → 6:10 | nominal 2 navigateurs · **le piège** · coupure/reprise |
-| Choix techniques (ADR) | 6:10 → 7:10 | options écartées argumentées |
-| **La reconnexion, maillon par maillon** | 7:10 → 8:05 | critère 4 : « snapshot **ou rejeu du delta** » |
-| Mesures et limites | 8:05 → 8:35 | prépare la Q&A |
+| Choix techniques (4 ADR) | 6:10 → 7:15 | options écartées argumentées |
+| **La reconnexion, maillon par maillon** | 7:15 → 8:10 | critère 4 : « snapshot **ou rejeu du delta** » |
+| Mesures et limites | 8:10 → 8:40 | prépare la Q&A |
 
 ## La démo est notée 7 points sur 12 — à répéter
 

@@ -77,6 +77,7 @@
 .codes td:first-child { width: 90px; }
 .adr td:nth-child(2) { width: 34%; }
 .adr td:last-child { color: var(--faible); font-size: 0.92em; }
+.adr .hors { font-size: 0.8em; font-weight: 400; color: var(--tres-faible); }
 .chaos { font-size: 0.66em; }
 .chaos td:last-child { text-align: right; font-family: ui-monospace, Menlo, monospace; color: var(--accent); }
 

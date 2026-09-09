@@ -87,6 +87,7 @@
 .codes td:first-child { width: 90px; }
 .adr td:nth-child(2) { width: 34%; }
 .adr td:last-child { color: var(--faible); font-size: 0.92em; }
+.adr .hors { font-size: 0.8em; font-weight: 400; color: var(--tres-faible); }
 .chaos { font-size: 0.66em; }
 .chaos td:last-child { text-align: right; font-family: ui-monospace, Menlo, monospace; color: var(--accent); }
 
@@ -252,7 +253,7 @@
   </aside>
 </section>
 
-<section><div class="contenu"><h2>Les trois décisions</h2>
+<section><div class="contenu"><h2>Les décisions techniques</h2>
   <table class="adr">
     <tr><td class="n">1</td><td><b>Socket.IO</b> pour le flux principal</td>
       <td><b>Écarté :</b> SSE, unidirectionnel — un « X écrit… » imposerait un POST par frappe.
@@ -266,9 +267,14 @@
       <td><b>Écarté :</b> le fan-out Redis comme robustesse principale — il rend le scaling
       possible, pas le système résilient. C'est même lui qui a introduit la seule panne en
       cascade du projet.</td></tr>
+    <tr><td class="n">4</td><td><b>WebRTC P2P pour la visio</b><br><span class="hors">hors barème</span></td>
+      <td><b>Écarté :</b> SFU et MCU — c'est un tête-à-tête, le maillage se réduit à une seule
+      connexion. <b>Limite assumée :</b> STUN sans TURN, donc échec derrière un NAT symétrique.</td></tr>
   </table>
   <p class="cle">Le renversement de l'ADR-2 : de « calculer exactement ce qui manque »
-  à « <b>renvoyer largement, il triera</b> ». Le <code>seq</code> est la clé d'idempotence.</p></div><aside class="notes">
+  à « <b>renvoyer largement, il triera</b> ». Le <code>seq</code> est la clé d'idempotence.</p>
+  <p class="note">L'ADR-4 n'est pas prescrit par le template : je l'ai écrit parce que les
+  décisions prises sur le flux A/V n'étaient documentées nulle part.</p></div><aside class="notes">
     <b>[6:10 → 7:10]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
     ce que la grille attend explicitement.
     <br><br>
@@ -276,10 +282,11 @@
     répond pas, et le rejet non capturé faisait tomber l'instance qui interrogeait. D'où le
     repli sur la vue locale.
     <br><br>
-    Un <b>ADR-4</b> non prescrit documente le flux A/V : P2P plutôt que SFU parce que c'est un
-    tête-à-tête, STUN sans TURN — donc <b>l'appel échoue derrière un NAT symétrique</b>, limite
-    assumée. À sortir si on demande « et pour un appel de groupe ? » ou « et derrière un
-    pare-feu d'entreprise ? ».
+Sur l'ADR-4 : une phrase suffit à l'oral — « P2P parce que c'est un
+    tête-à-tête, un SFU serait la réponse pour du groupe ». Garder le détail pour la Q&A :
+    « et pour un appel à trois ? » (SFU, chaque pair n'émet qu'une fois) et « et derrière un
+    pare-feu d'entreprise ? » (NAT symétrique, il faut un TURN, qui relaie le flux et
+    réintroduit le tiers que le P2P évitait).
   </aside>
 </section>
 
