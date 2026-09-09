@@ -1,0 +1,49 @@
+# Analyse de composition - portage du bloc A, avec un SEUIL RE-DECIDE pour ce projet.
+name: supply-chain
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+
+jobs:
+  deps-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+
+      # SEUIL : moderate, et non high comme sur le fork Juice Shop du bloc A.
+      #
+      # Justification, mesuree le 2026-09-09 : Juice Shop declare 117 dependances directes pour
+      # 1457 entrees de lock, avec 7 critical et 21 high. A cette echelle, `high` est deja un
+      # tri de survie et `moderate` noierait le signal.
+      #
+      # Ici : 15 dependances directes pour 167 entrees de lock, et une seule vulnerabilite
+      # (@fastify/static, high). Le cout en bruit d'un seuil `moderate` est donc quasi nul,
+      # alors que son benefice est reel : sur un arbre aussi petit, une moderate est
+      # proportionnellement bien plus significative, et rien ne justifie de l'ignorer.
+      #
+      # Un seuil est une decision de contexte, pas une constante a recopier.
+      - name: npm audit
+        id: npm-audit
+        continue-on-error: true
+        run: npm audit --audit-level=moderate
+
+      - name: osv-scanner
+        id: osv
+        continue-on-error: true
+        uses: google/osv-scanner-action/osv-scanner-action@v2.5.1
+        with:
+          scan-args: |-
+            scan
+            source
+            --lockfile=package-lock.json
+
+      - name: Seuil de blocage
+        if: steps.npm-audit.outcome == 'failure' || steps.osv.outcome == 'failure'
+        run: |
+          echo "::error::Vulnerabilite au-dessus du seuil dans les dependances"
+          exit 1

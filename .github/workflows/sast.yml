@@ -1,0 +1,69 @@
+# SAST (Semgrep) + detection de secrets (gitleaks) - portage du pipeline du bloc A.
+#
+# Perimetre : `src` seulement. Scanner la racine reviendrait a scanner node_modules et public/.
+name: sast
+
+on: [push, pull_request]
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  sast:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Semgrep scan
+        id: semgrep
+        continue-on-error: true          # produire le SARIF, puis decider du blocage
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src semgrep/semgrep:1.145.0 \
+            semgrep scan --config=p/ci --config=.semgrep/ \
+              --sarif --output=semgrep.sarif --error --metrics=off src
+
+      - name: Upload SARIF vers l'onglet Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+      - name: Seuil de blocage
+        if: steps.semgrep.outcome == 'failure'
+        run: |
+          echo "::error::Semgrep a remonte des findings bloquants"
+          exit 1
+
+  secret-detection:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0   # sans ca, gitleaks ne voit qu'un seul commit
+
+      # gitleaks/gitleaks-action@v3 exige une licence sur un compte d'ORGANISATION. Ce depot
+      # appartient a al5-esgi : l'action s'arrete en 0 s sans rien scanner (constate en S3 sur
+      # le fork Juice Shop). On passe par l'image officielle, meme travail, sans licence.
+      # Sous-commande `git` et non `dir` : c'est l'HISTORIQUE qui est scanne.
+      - name: gitleaks scan de l'historique git
+        id: gitleaks
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$PWD:/path" -w /path ghcr.io/gitleaks/gitleaks:v8.30.1 \
+            git /path --report-format sarif --report-path /path/gitleaks.sarif \
+              --redact --exit-code 1
+
+      - name: Upload du rapport gitleaks
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: gitleaks-report
+          path: gitleaks.sarif
+
+      - name: Seuil de blocage
+        if: steps.gitleaks.outcome == 'failure'
+        run: |
+          echo "::error::gitleaks a detecte des secrets dans l'historique git"
+          exit 1
