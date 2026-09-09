@@ -78,6 +78,10 @@
 .adr td:nth-child(2) { width: 34%; }
 .adr td:last-child { color: var(--faible); font-size: 0.92em; }
 .adr .hors { font-size: 0.8em; font-weight: 400; color: var(--tres-faible); }
+.adr .rejet { display: block; margin-bottom: 4px; line-height: 1.4; }
+.adr .rejet:last-child { margin-bottom: 0; }
+.adr .rejet b { color: var(--texte); }
+.adr td:nth-child(2) { width: 27%; }
 .chaos { font-size: 0.66em; }
 .chaos td:last-child { text-align: right; font-family: ui-monospace, Menlo, monospace; color: var(--accent); }
 

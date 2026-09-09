@@ -146,28 +146,43 @@
 <section>
   <h2>Les décisions techniques</h2>
   <table class="adr">
-    <tr><td class="n">1</td><td><b>Socket.IO</b> pour le flux principal</td>
-      <td><b>Écarté :</b> SSE, unidirectionnel — un « X écrit… » imposerait un POST par frappe.
-      WebRTC, aucune autorité centrale : ni <code>seq</code>, ni historique, ni contrôle
-      d'appartenance.</td></tr>
-    <tr><td class="n">2</td><td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
-      <td><b>Écarté — les quatre familles :</b> <b>OT / CRDT</b>, un message est atomique,
-      personne n'édite celui d'un autre. <b>Snapshot+delta</b>, un delta relatif (« +5 ») n'est
-      pas idempotent — mes messages sont autoportants. <b>Tick</b>, mon serveur est événementiel,
-      sans horloge — c'est le stub qui diffusait toutes les 500 ms. <b>Horodatage</b>, deux
-      messages peuvent partager une milliseconde.</td></tr>
-    <tr><td class="n">3</td><td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
-      <td><b>Écarté :</b> le fan-out Redis comme robustesse principale — il rend le scaling
-      possible, pas le système résilient. C'est même lui qui a introduit la seule panne en
-      cascade du projet.</td></tr>
-    <tr><td class="n">4</td><td><b>WebRTC P2P pour la visio</b><br><span class="hors">hors barème</span></td>
-      <td><b>Écarté :</b> SFU et MCU — c'est un tête-à-tête, le maillage se réduit à une seule
-      connexion. <b>Limite assumée :</b> STUN sans TURN, donc échec derrière un NAT symétrique.</td></tr>
+    <tr>
+      <td class="n">1</td>
+      <td><b>Socket.IO</b><br><span class="hors">transport</span></td>
+      <td>
+        <span class="rejet"><b>Pas SSE</b> — unidirectionnel : un « X écrit… » coûterait un POST par frappe.</span>
+        <span class="rejet"><b>Pas WebRTC</b> — aucune autorité centrale : ni <code>seq</code>, ni historique.</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="n">2</td>
+      <td><b>Séquence + déduplication</b><br><span class="hors">convergence</span></td>
+      <td>
+        <span class="rejet"><b>Pas OT ni CRDT</b> — un message est atomique : personne n'édite celui d'un autre.</span>
+        <span class="rejet"><b>Pas snapshot+delta</b> — un delta relatif n'est pas idempotent ; mes messages sont autoportants.</span>
+        <span class="rejet"><b>Pas de tick</b> — serveur événementiel, sans horloge.</span>
+        <span class="rejet"><b>Pas d'horodatage</b> — deux messages peuvent partager une milliseconde.</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="n">3</td>
+      <td><b>Reconnexion + rejeu du delta</b><br><span class="hors">robustesse</span></td>
+      <td>
+        <span class="rejet"><b>Pas le fan-out Redis</b> — il rend le scaling possible, pas le système résilient : c'est lui qui a introduit la seule panne en cascade.</span>
+      </td>
+    </tr>
+    <tr>
+      <td class="n">4</td>
+      <td><b>WebRTC pair-à-pair</b><br><span class="hors">visio · hors barème</span></td>
+      <td>
+        <span class="rejet"><b>Pas de SFU ni MCU</b> — c'est un tête-à-tête : une seule connexion.</span>
+        <span class="rejet"><b>Limite assumée</b> — STUN sans TURN : échec derrière un NAT symétrique.</span>
+      </td>
+    </tr>
   </table>
-  <p class="cle">Le renversement de l'ADR-2 : de « calculer exactement ce qui manque »
-  à « <b>renvoyer largement, il triera</b> ». Le <code>seq</code> est la clé d'idempotence.</p>
-  <p class="note">L'ADR-4 n'est pas prescrit par le template : je l'ai écrit parce que les
-  décisions prises sur le flux A/V n'étaient documentées nulle part.</p>
+  <p class="cle">Le <code>seq</code> est une <b>clé d'idempotence</b>, pas un numéro d'ordre
+  d'application : recevoir deux fois le même message ne fait rien. C'est ce qui permet au
+  serveur de <b>renvoyer large plutôt qu'exact</b>.</p>
   <aside class="notes">
     <b>[6:10 → 7:10]</b> Chaque décision est justifiée par ce qui a été <i>écarté</i> — c'est
     ce que la grille attend explicitement.
