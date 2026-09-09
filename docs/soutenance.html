@@ -275,6 +275,11 @@
     Sur l'ADR-3, raconter la panne : <code>fetchSockets()</code> rejette si une instance ne
     répond pas, et le rejet non capturé faisait tomber l'instance qui interrogeait. D'où le
     repli sur la vue locale.
+    <br><br>
+    Un <b>ADR-4</b> non prescrit documente le flux A/V : P2P plutôt que SFU parce que c'est un
+    tête-à-tête, STUN sans TURN — donc <b>l'appel échoue derrière un NAT symétrique</b>, limite
+    assumée. À sortir si on demande « et pour un appel de groupe ? » ou « et derrière un
+    pare-feu d'entreprise ? ».
   </aside>
 </section>
 

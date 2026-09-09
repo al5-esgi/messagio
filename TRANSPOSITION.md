@@ -15,7 +15,9 @@ vous en remplacez une tranche par la technique vue sur le kit de reference.
 | 8 | pas de signaling | **WebRTC natif** : signaling `offer`/`answer`/`ice` relaye + visio P2P entre 2 membres + chaos reseau | c'est le coeur du sujet |
 
 Les ADR correspondants : `docs/adr/0001` (etape 2, acceptee etape 4), `docs/adr/0002` (etape 6), `docs/adr/0003`
-(etape 7, acceptee etape 8).
+(etape 7, acceptee etape 8). S'y ajoute `docs/adr/0004` (flux audio/video), **non prescrit par le
+template** : les decisions prises sur la visio — P2P plutot que SFU, STUN sans TURN, deux
+participants — n'etaient documentees nulle part.
 
 ## Avancement
 
