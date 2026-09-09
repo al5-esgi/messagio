@@ -1,0 +1,351 @@
+<section data-auto-animate>
+  <p class="kicker">Sécurité applicative — soutenance</p>
+  <h1>messagio</h1>
+  <p class="sous">Dossier de sécurité d'un service de chat temps réel</p>
+  <p class="meta">Threat model STRIDE · 3 familles de scan · 5 findings prouvés · registre RGPD</p>
+  <aside class="notes">
+    <b>[0:00 → 0:15]</b> « Je présente le risque, je démontre le pipeline et le build qui casse,
+    puis je justifie ce que j'ai corrigé et ce que je n'ai pas corrigé. »
+    <br><br>Environnement déjà lancé : dépôt ouvert, onglet Actions ouvert, terminal prêt.
+  </aside>
+</section>
+
+<section>
+  <h2>Ce que le service protège</h2>
+  <p class="intro">Un chat multi-salons, dont certains sont <b>privés</b> — <code>dev</code> est
+  réservé à alice et bob. Des messages entre personnes identifiées par un pseudonyme.</p>
+  <div class="deux">
+    <div>
+      <h3>Biens essentiels</h3>
+      <ul class="serre">
+        <li><b>BE1</b> contenu des salons privés</li>
+        <li><b>BE2</b> identité des membres (le <code>sub</code>)</li>
+        <li><b>BE3</b> intégrité de l'historique et du <code>seq</code></li>
+        <li><b>BE4</b> disponibilité du canal</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Événements redoutés</h3>
+      <ul class="serre">
+        <li><b>ER1</b> lecture d'un salon privé par un tiers — <b>gravité 4</b></li>
+        <li><b>ER2</b> usurpation d'identité d'un membre — <b>gravité 4</b></li>
+        <li><b>ER3</b> historique non fiable — gravité 3</li>
+        <li><b>ER4</b> saturation du canal — gravité 2</li>
+      </ul>
+    </div>
+  </div>
+  <p class="cle">Pseudonyme stable + messages + horaires de connexion + adresse IP =
+  <b>données personnelles</b>. Ce n'est pas une nuance juridique, c'est ce qui fait de ER1 une
+  gravité 4.</p>
+  <aside class="notes">
+    <b>[0:15 → 1:10]</b> Insister : BE2 est le bien pivot. Tout le contrôle d'accès aux salons
+    repose sur le <code>sub</code> du jeton — si l'identité tombe, tout le reste tombe avec.
+    <br><br>Si on demande pourquoi c'est du personnel malgré le pseudonyme : art. 4.1, la
+    personne est identifiable <i>indirectement</i>. La pseudonymisation réduit le risque, elle
+    ne sort pas du règlement.
+  </aside>
+</section>
+
+<section>
+  <h2>La frontière propre au temps réel</h2>
+  <p class="intro">Cinq trust boundaries. Une seule est spécifique au canal : <b>la décision
+  d'autorisation est prise une fois, le canal vit ensuite des heures.</b></p>
+  <div class="cartes">
+    <div class="carte">
+      <p class="titre-carte">Le jeton expire pendant que le canal est ouvert ?</p>
+      <p><b>Rien ne se passe.</b> <code>io.use()</code> vérifie une fois au handshake
+      (<code>socketio-server.ts:125</code>). Aucun minuteur ne referme la socket à l'échéance.
+      Le jeton vaut 4 h ; l'autorisation vaut la durée de la connexion TCP.</p>
+    </div>
+    <div class="carte">
+      <p class="titre-carte">L'autorisation est-elle revérifiée à l'émission ?</p>
+      <p><b>Partiellement</b> — et c'est la bonne surprise. Le serveur ne se fie pas au
+      <code>salonId</code> annoncé : il vérifie <code>socket.rooms.has(room)</code>
+      (<code>:360</code>). Mais il vérifie l'appartenance à la room, pas le <i>droit courant</i>.</p>
+    </div>
+    <div class="carte">
+      <p class="titre-carte">Comment une socket apprend qu'un droit est retiré ?</p>
+      <p><b>Elle ne l'apprend pas.</b> Aucun chemin dans le code ne force un
+      <code>leave()</code> depuis un changement de <code>salon.membres</code>. Retirer bob de
+      <code>dev</code> n'a aucun effet sur sa socket ouverte.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <b>[1:10 → 2:00]</b> C'est la slide qui distingue un threat model de service temps réel d'un
+    threat model d'API REST. En REST, chaque requête rejoue l'autorisation. Ici, une seule
+    décision couvre des heures de trafic.
+    <br><br>Question probable : « comment vous corrigeriez ? » — minuteur sur <code>exp</code> qui
+    ferme la socket, et propagation d'une révocation via l'adapter Redis à toutes les instances.
+  </aside>
+</section>
+
+<section>
+  <h2>Les trois lignes de priorité H</h2>
+  <p class="intro">13 lignes STRIDE, 6 catégories. Les quatre briques déjà présentes ne sont pas
+  réimplémentées : elles sont <b>instruites</b>, avec la borne de ce qu'elles couvrent.</p>
+  <table class="petit">
+    <tr><th>#</th><th>Catégorie</th><th>Menace</th><th>ER</th></tr>
+    <tr><td>1</td><td>Spoofing</td><td><code>/api/dev-token</code> délivre un jeton à quiconque, avec le <code>sub</code> demandé</td><td>ER2</td></tr>
+    <tr><td>2</td><td>Spoofing</td><td><code>SECRET = 'change-moi'</code> versionné, signe <b>et</b> vérifie</td><td>ER2</td></tr>
+    <tr><td>3</td><td>Elev. of privilege</td><td>Les routes REST touchent les mêmes salons <b>sans</b> <code>peutRejoindre()</code></td><td>ER1</td></tr>
+  </table>
+  <p class="cle">Les briques existantes et leur borne : le JWT au handshake <span class="note">(jamais réévalué, <code>jwt.verify</code> sans <code>algorithms</code>)</span> · l'autorisation par room <span class="note">(protège le canal, et seulement lui)</span> · le contrôle d'origine <span class="note">(CORS n'engage que les navigateurs)</span> · le rate-limiting <span class="note">(par socket, pas par identité)</span>.</p>
+  <aside class="notes">
+    <b>[2:00 → 2:45]</b> Le point qui fait la différence : « une ligne <i>déjà couvert</i> sans
+    borne écrite n'est pas une ligne, c'est une case cochée. » Chaque brique dit jusqu'où elle va.
+    <br><br>Le contrôle d'origine est le plus contre-intuitif : il est correctement configuré, et
+    il ne protège <i>rien</i> contre un attaquant direct — <code>wscat</code> n'envoie pas
+    d'<code>Origin</code>. Il protège contre le détournement depuis un site tiers, c'est tout.
+  </aside>
+</section>
+
+<section>
+  <h2>Le pipeline — trois familles, trois seuils</h2>
+  <table class="petit">
+    <tr><th>Job</th><th>Outil</th><th>Périmètre</th><th>Seuil</th><th>État</th></tr>
+    <tr><td><code>sast</code></td><td>Semgrep 1.145.0</td><td><code>src/</code></td><td>tout finding</td><td class="rejet">rouge</td></tr>
+    <tr><td><code>secret-detection</code></td><td>gitleaks 8.30.1</td><td><b>historique git</b></td><td>tout secret</td><td class="ou">vert</td></tr>
+    <tr><td><code>deps-scan</code></td><td>npm audit + osv-scanner</td><td><code>package-lock.json</code></td><td><code>moderate</code></td><td class="rejet">rouge</td></tr>
+  </table>
+  <div class="deux">
+    <div>
+      <h3>Publier et décider sont deux gestes</h3>
+      <p>Le scan tourne en <code>continue-on-error</code>, le SARIF est publié, <b>puis</b> un
+      step « Seuil de blocage » transforme le code de retour en verdict. C'est ce découplage qui
+      permet d'avoir un rapport <i>et</i> un build cassé.</p>
+    </div>
+    <div>
+      <h3>Le seuil est une décision de contexte</h3>
+      <p><code>moderate</code> ici, <code>high</code> sur le fork Juice Shop du bloc A.
+      <b>15 dépendances directes pour 167 entrées de lock</b> contre 117 pour 1457 : à cette
+      échelle, le bruit d'un seuil bas est quasi nul.</p>
+    </div>
+  </div>
+  <aside class="notes">
+    <b>[2:45 → 3:30]</b> Chiffre à donner : <code>p/ci</code>, le catalogue générique, remonte
+    <b>zéro</b> finding sur ce code. Les 6 findings viennent tous de mes règles ciblées, dont une
+    écrite pour ce projet : <code>rt-route-salon-sans-controle-appartenance</code>, dérivée de la
+    ligne STRIDE #3.
+    <br><br>Enchaîner immédiatement sur la démo : « je vous montre le job vert, puis je le casse. »
+  </aside>
+</section>
+
+<section data-auto-animate>
+  <h2 class="demo">Démo · scène 1 — le fonctionnement nominal</h2>
+  <p class="intro">Onglet <b>Actions</b>, dernier run sur <code>main</code>.</p>
+  <ol class="serre">
+    <li><code>secret-detection</code> est <b class="ou">vert</b> : gitleaks a scanné
+      <b>tout l'historique git</b> (<code>fetch-depth: 0</code>) et n'a rien trouvé.</li>
+    <li>Ouvrir le step : <code>no leaks found</code>, et le step « Seuil de blocage » est
+      <b>skipped</b> — il n'avait rien à décider.</li>
+    <li>Montrer <code>.gitleaksignore</code> : une seule exclusion, <b>commentée et datée</b>.
+      Le vert n'est pas obtenu en aveuglant l'outil.</li>
+  </ol>
+  <p class="cle">Un pipeline vert ne veut rien dire s'il n'a rien cherché. Ce qui compte, c'est ce
+  qu'il a scanné et ce qu'on a décidé pour les alertes restantes.</p>
+  <aside class="notes">
+    <b>[3:30 → 4:15]</b> Pointer explicitement le « skipped » sur le step de seuil : c'est la
+    preuve visuelle que le blocage est une décision et pas un effet de bord.
+    <br><br>L'exclusion tracée est mon propre rapport d'audit, qui cite un JWT pour prouver F-02.
+    Vrai positif, risque accepté, justifié en 6 lignes dans <code>.gitleaksignore</code> — le
+    jeton est signé avec le secret déjà public, il n'ouvre rien de plus.
+  </aside>
+</section>
+
+<section data-auto-animate>
+  <h2 class="demo">Démo · scène 2 — la régression casse le build</h2>
+  <p class="intro">Un développeur pressé committe un fichier de configuration de déploiement.</p>
+  <pre class="script"><code>cp docs/soutenance-securite/regression.patch.ts src/deploiement.ts
+git add src/deploiement.ts &amp;&amp; git commit -m "chore: config de deploiement"
+git push</code></pre>
+  <div class="deux">
+    <div>
+      <h3>Ce que gitleaks remonte</h3>
+      <ul class="serre">
+        <li><code>src/deploiement.ts:8</code> — <b><code>generic-api-key</code></b></li>
+        <li><code>src/deploiement.ts:9</code> — <b><code>generic-api-key</code></b></li>
+      </ul>
+      <p class="note">Charge volontairement générique : un motif de fournisseur
+      (<code>ghp_</code>, <code>sk_live_</code>) serait bloqué par la <b>push protection</b> de
+      GitHub <i>avant</i> que les Actions ne démarrent.</p>
+    </div>
+    <div>
+      <h3>Où le build casse, exactement</h3>
+      <p><code>gitleaks scan</code> : <b class="ou">success</b> — il a fait son travail et produit
+      son rapport.<br>
+      <code>Seuil de blocage</code> : <b class="rejet">failure</b>.</p>
+      <p class="note">C'est le second step qui décide, pas le premier.</p>
+    </div>
+  </div>
+  <p class="cle">L'artefact <code>gitleaks-report</code> reste téléchargeable <b>malgré</b> l'échec.
+  Un job rouge qui ne laisse pas de rapport derrière lui est inexploitable.</p>
+  <aside class="notes">
+    <b>[4:15 → 5:30]</b> C'est la scène notée. Dérouler lentement : pousser, ouvrir le run,
+    déplier les deux steps, <b>pointer du doigt</b> « Seuil de blocage — failure » et lire la
+    ligne <code>::error::gitleaks a detecte des secrets dans l'historique git</code>.
+    <br><br>Insister sur le mot <b>historique</b> : même si je supprime le fichier au commit
+    suivant, gitleaks le retrouvera. Un secret commité ne se retire pas, il se <b>révoque</b>.
+    C'est la même leçon que le layer Docker immuable du bloc A.
+    <br><br>Ne pas oublier de revenir sur la branche propre après la démo.
+  </aside>
+</section>
+
+<section>
+  <h2 class="demo">Démo · scène 3 — lire un finding</h2>
+  <p class="intro">Onglet <b>Security &gt; Code scanning</b>, catégorie <code>semgrep</code>.</p>
+  <div class="deux">
+    <div>
+      <h3>Le finding</h3>
+      <p><code>rt-route-salon-sans-controle-appartenance</code><br>
+      <code>src/rest.ts:27</code> — <b>ERROR</b><br>
+      CWE-862 Missing Authorization</p>
+      <p class="note">C'est <b>ma</b> règle, pas une règle du catalogue. Elle est dérivée de la
+      ligne STRIDE #3 : aucun outil générique ne peut connaître une règle métier.</p>
+    </div>
+    <div>
+      <h3>La preuve, en deux commandes</h3>
+      <pre class="script"><code>bash audit/preuve-f03-rest-sans-autorisation.sh</code></pre>
+      <p><code>GET /api/salons/dev/messages</code> → <b class="rejet">200</b>, contenu du salon
+      privé, <b>sans jeton</b>.<br>
+      <code>POST</code> avec <code>auteur: "alice"</code> → <b class="rejet">201</b>.</p>
+    </div>
+  </div>
+  <p class="cle">Le canal contrôle l'appartenance. La couche REST accède aux mêmes salons sans
+  rien vérifier. <b>L'autorisation avait été traitée comme une propriété du transport, pas de la
+  ressource.</b></p>
+  <aside class="notes">
+    <b>[5:30 → 6:15]</b> Montrer l'annotation à la ligne exacte dans l'onglet Security, puis
+    lancer le script dans le terminal déjà prêt. Les preuves sont versionnées dans
+    <code>audit/</code> : trois scripts, rejouables par n'importe qui.
+    <br><br>Si le temps manque : lancer seulement le script, l'onglet Security a déjà été montré
+    en scène 2.
+  </aside>
+</section>
+
+<section>
+  <h2>Le finding le plus haut, et sa chaîne</h2>
+  <p class="intro">5 findings, 3 <i>Critical</i>. Les trois premiers ne sont pas indépendants :
+  <b>ils s'enchaînent.</b></p>
+  <div class="chaine">
+    <div><b>F-01</b><br><code>SECRET = 'change-moi'</code><br><span class="note">CWE-798 · 9.3</span></div>
+    <div class="fleche">→</div>
+    <div><b>F-02</b><br><code>/api/dev-token</code> sans auth<br><span class="note">CWE-306 · 9.3</span></div>
+    <div class="fleche">→</div>
+    <div><b>F-03</b><br>REST sans autorisation<br><span class="note">CWE-862 · 9.3</span></div>
+  </div>
+  <p class="intro">La preuve qui résume tout :</p>
+  <pre class="script"><code>sub=mallory (non membre) -> dev : join refuse : salon prive
+sub=alice   (membre)     -> dev : join ACCEPTE, 2 messages lus</code></pre>
+  <p><b>Mon contrôle d'appartenance fonctionne</b> — mallory est rejeté. Et il est entièrement
+  neutralisé par la forge d'identité avec le secret lu ligne 49.</p>
+  <aside class="notes">
+    <b>[6:15 → 7:15]</b> C'est le point le plus intéressant du dossier : ce n'est pas un contrôle
+    absent, c'est un contrôle <b>correct</b> rendu inutile par une faiblesse en amont.
+    <br><br>F-02 est le finding qu'<b>aucun outil ne pouvait trouver</b> : la route est
+    syntaxiquement irréprochable, elle valide son entrée et borne la longueur du pseudo. Son défaut
+    est qu'elle <i>devrait</i> exiger une preuve d'identité — une propriété du modèle métier.
+  </aside>
+</section>
+
+<section>
+  <h2>Ce que je n'ai pas corrigé, et pourquoi</h2>
+  <p class="intro">Aucun finding n'est corrigé à ce jour. C'est écrit dans la checklist :
+  <b>le dossier est complet, le système ne l'est pas.</b></p>
+  <div class="deux">
+    <div>
+      <h3>Le classement diverge de CVSS</h3>
+      <table class="petit">
+        <tr><th>Rang</th><th>Finding</th><th>Risque</th><th>CVSS</th></tr>
+        <tr><td>4</td><td>F-04 rate-limit</td><td><b>18</b></td><td>6.9</td></tr>
+        <tr><td>5</td><td>F-05 dépendance</td><td><b>12</b></td><td>8.7</td></tr>
+      </table>
+      <p class="note">F-04 est exploitable <b>avec un script déjà écrit</b> : 150 msg/s pour une
+      identité, contre 15 annoncés. F-05 suppose une charge de traversée à construire.</p>
+    </div>
+    <div>
+      <h3>ADR-0005 — les trois axes</h3>
+      <p><b>Impact × Exploitabilité × Exposition</b>, chacun de 1 à 3, produit de 1 à 27.</p>
+      <p>Le produit et non la somme : un risque dont un facteur est nul n'est pas un risque.</p>
+      <p class="note">Le niveau 3 d'exploitabilité est ancré sur l'existence d'une preuve
+      rejouable dans <code>audit/</code>. Ce n'est pas une opinion sur la difficulté.</p>
+    </div>
+  </div>
+  <p class="cle">CVSS donne <b>9.3 aux trois premiers</b>, avec le même vecteur : il ne les
+  départage pas. Un plan de remédiation a pourtant besoin d'un ordre — ce sont le coût et la
+  réversibilité qui tranchent.</p>
+  <aside class="notes">
+    <b>[7:15 → 8:15]</b> F-01 passe premier parce qu'il est le seul qui <b>ne se corrige pas par
+    un commit</b> : le secret est dans l'historique, il faut une rotation. Cette dimension
+    n'existe pas dans CVSS.
+    <br><br>Ce que ces critères dépriorisent systématiquement, et que j'assume par écrit : les
+    vulnérabilités de dépendances (plafonnées à 2 en exploitabilité) et les défauts de traçabilité
+    (impact 1 tant qu'aucun incident n'a eu lieu — et c'est exactement le moment où on en aurait
+    besoin).
+  </aside>
+</section>
+
+<section>
+  <h2>Registre des traitements et documentation SSI</h2>
+  <div class="deux">
+    <div>
+      <h3>Trois traitements réels</h3>
+      <ul class="serre">
+        <li><b>T-01</b> messages — <i>exécution du contrat</i></li>
+        <li><b>T-02</b> présence et journaux — <i>intérêt légitime</i></li>
+        <li><b>T-03</b> émission des jetons</li>
+      </ul>
+      <p class="note">L'adresse IP est traitée non par mon code mais par le <b>proxy nginx</b>,
+      qui journalise chaque requête et l'utilise pour <code>ip_hash</code>.</p>
+    </div>
+    <div>
+      <h3>Ce que le registre a révélé</h3>
+      <p><b>Deux traitements sur trois n'ont aucune durée de conservation.</b>
+      <code>MAX_HISTORIQUE = 200</code> est un plafond de <i>volume</i> — un salon peu actif garde
+      ses messages indéfiniment.</p>
+      <p>Aucune politique de confidentialité, aucun mécanisme d'exercice des droits.</p>
+    </div>
+  </div>
+  <p class="cle">Le plan de remédiation porte <b>5 lignes du rapport d'audit</b> et
+  <b>5 lignes issues du registre</b>. Trois risques acceptés, chacun avec un nom et une date de
+  revue — sans quoi ce serait un abandon, pas une acceptation.</p>
+  <aside class="notes">
+    <b>[8:15 → 8:50]</b> La checklist est cochée <b>contre <code>git ls-files</code></b>, pas de
+    mémoire. Les 8 cases sont cochées, et j'ai ajouté une section « ce qui n'est pas coché et
+    pourquoi » avec trois réserves — dont le fait qu'aucun finding n'est corrigé.
+    <br><br>Aucun sous-traitant à ce jour : la conformité est obtenue par l'absence
+    d'externalisation, pas par une diligence. Le premier hébergeur créera l'obligation art. 28.
+  </aside>
+</section>
+
+<section>
+  <h2>Ce que je sais qu'il reste à faire</h2>
+  <div class="cartes">
+    <div class="carte">
+      <p class="titre-carte">Priorité 1 — F-01</p>
+      <p>Secret en variable d'environnement, démarrage refusé s'il est absent,
+      <b>et rotation de la clé</b> : l'actuelle est publiée.</p>
+      <p class="note">Effort S pour le code, M avec la rotation.</p>
+    </div>
+    <div class="carte">
+      <p class="titre-carte">Priorité 2 — F-03</p>
+      <p>Un garde unique <code>peutAcceder(identite, salonId)</code> appelé par le canal
+      <b>et</b> par REST. L'auteur vient du jeton, jamais du corps.</p>
+      <p class="note">Effort M.</p>
+    </div>
+    <div class="carte">
+      <p class="titre-carte">Accepté, daté</p>
+      <p>Pas de journal d'audit dans le cadre académique. Conséquence assumée : en cas de
+      contestation, rien ne permet de reconstituer qui a fait quoi.</p>
+      <p class="note">Revue à la première exploitation réelle.</p>
+    </div>
+  </div>
+  <p class="cle">Un pipeline vert obtenu en désactivant les règles serait un mensonge. Un pipeline
+  rouge dont <b>chaque alerte est documentée, priorisée et datée</b> est un état de fait.</p>
+  <aside class="notes">
+    <b>[8:50 → 9:15]</b> Slide de clôture : elle prépare la Q&amp;A en montrant que je connais les
+    limites du dossier. Terminer là-dessus et rendre la main.
+    <br><br>Questions les plus probables : « pourquoi ne pas avoir corrigé ? » — priorisation
+    assumée, le dossier avant le correctif, et l'ADR-0005 dit dans quel ordre attaquer.
+    « Que feriez-vous en premier lundi matin ? » — F-01, et d'abord la rotation, pas le commit.
+  </aside>
+</section>

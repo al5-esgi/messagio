@@ -1,0 +1,22 @@
+# Exclusions gitleaks - une entree par empreinte, commentee et datee.
+# Toute ligne ici est une decision de risque tracee, revocable, et revue si le contexte change.
+# L'exclusion porte sur une EMPREINTE precise, jamais sur la regle entiere : desactiver
+# `generic-api-key` pour faire taire une ligne aveuglerait l'outil sur tout le depot.
+
+# 2026-09-09 docs/security/rapport-audit.md:90 - le rapport d'audit cite la sortie de
+# GET /api/dev-token pour prouver le finding F-02. La valeur est un JWT reellement emis par
+# une instance LOCALE, signe avec le secret 'change-moi' deja public (finding F-01) : il
+# n'ouvre aucun acces qui ne le soit deja, et l'instance qui l'a emis n'existe plus.
+# VRAI POSITIF, risque ACCEPTE. Il reste dans l'historique git : le retirer du fichier ne le
+# retirerait pas du passe - c'est la meme lecon que le layer Docker immuable du bloc A.
+# A revoir a la rotation du secret prevue en ligne F-01 du plan de remediation.
+docs/security/rapport-audit.md:generic-api-key:90
+
+# 2026-09-09 docs/soutenance-securite/regression.patch.ts:8 et :9 - charge de la regression
+# de demonstration de la soutenance (scene 2). Ce sont des chaines aleatoires sans valeur :
+# elles n'ouvrent aucun acces, nulle part. FAUX POSITIF au sens strict.
+# L'exclusion porte sur le chemin de DOCUMENTATION uniquement. Des que ce fichier est copie
+# en src/deploiement.ts pendant la demo, il n'est plus couvert et gitleaks le detecte : c'est
+# exactement ce que la scene 2 doit montrer.
+docs/soutenance-securite/regression.patch.ts:generic-api-key:8
+docs/soutenance-securite/regression.patch.ts:generic-api-key:9
