@@ -15,9 +15,28 @@
 <!--SLIDES-->
       </div>
     </div>
+    <div id="notes-inline"></div>
     <script>/*REVEAL_JS*/</script>
+    <script>/*REVEAL_NOTES*/</script>
     <script>
+      // Repli sans popup : la touche V affiche les notes de la slide courante en surimpression.
+      // La vue orateur (S) ouvre une seconde fenetre, que le navigateur peut bloquer et qui est
+      // capricieuse depuis un fichier local. V fonctionne toujours, y compris en double-clic.
+      function basculerNotes() {
+        const panneau = document.getElementById('notes-inline');
+        panneau.classList.toggle('visible');
+        rafraichirNotes();
+      }
+      function rafraichirNotes() {
+        const panneau = document.getElementById('notes-inline');
+        if (!panneau.classList.contains('visible')) return;
+        const notes = Reveal.getCurrentSlide().querySelector('aside.notes');
+        panneau.innerHTML = notes ? notes.innerHTML : '<i>Pas de note sur cette slide.</i>';
+      }
+
       Reveal.initialize({
+        plugins: [RevealNotes],   // touche S : vue orateur dans une seconde fenetre
+        keyboard: { 86: basculerNotes },   // 86 = V, pour « voir les notes »
         hash: true,
         center: true,
         slideNumber: "c/t",
@@ -29,6 +48,7 @@
         height: 720,
         margin: 0.05,
       });
+      Reveal.on('slidechanged', rafraichirNotes);
     </script>
   </body>
 </html>

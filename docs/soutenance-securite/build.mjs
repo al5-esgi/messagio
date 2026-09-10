@@ -29,6 +29,7 @@ writeFileSync(
     .replace('/*THEME*/', lire(join(ICI, '..', 'soutenance', 'theme.css')))
     .replace('/*THEME_SECU*/', lire(join(ICI, 'theme-securite.css')))
     .replace('<!--SLIDES-->', envelopper(lire(join(ICI, 'slides.html'))))
-    .replace('/*REVEAL_JS*/', lire(join(REVEAL, 'reveal.js'))),
+    .replace('/*REVEAL_JS*/', lire(join(REVEAL, 'reveal.js')))
+    .replace('/*REVEAL_NOTES*/', lire(join(REVEAL, 'plugin', 'notes.js'))),
 )
 console.log('ecrit : docs/soutenance-securite.html')

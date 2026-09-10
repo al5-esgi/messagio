@@ -9,8 +9,25 @@ de `docs/soutenance/`, avec lequel il partage le thème.
 open docs/soutenance-securite.html
 ```
 
-Le fichier est **autonome** : CSS et JS de reveal.js y sont inlinés. Ni CDN, ni serveur, ni
-réseau. `S` ouvre la vue orateur, `F` le plein écran, `Échap` la vue d'ensemble.
+Le fichier est **autonome** : CSS et JS de reveal.js y sont inlinés. Ni CDN, ni serveur, ni réseau.
+
+## Afficher les notes de l'orateur
+
+Chaque slide porte ses notes, avec **son créneau horaire** en tête (`[3:30 → 4:15]`).
+
+| Touche | Effet |
+|---|---|
+| **`V`** | **affiche les notes de la slide courante** en surimpression, en bas de l'écran. Se met à jour en changeant de slide. **C'est l'option fiable** : aucune popup, fonctionne en double-clic sur le fichier local |
+| `S` | **vue orateur** : seconde fenêtre avec les notes, la slide suivante, un chrono et le minutage. Idéal si vous avez **deux écrans** — mais elle ouvre une **popup**, que le navigateur peut bloquer, et qui est capricieuse depuis un fichier `file://` |
+| `F` | plein écran |
+| `Échap` | vue d'ensemble des slides |
+| `flèches` / `espace` | naviguer |
+
+> [!] Si `S` ne fait rien, c'est le bloqueur de popups. Autorisez les popups pour la page, ou
+> servez le fichier en HTTP (`cd docs && python3 -m http.server 8000`), ou contentez-vous de `V`.
+>
+> Le jour J avec un vidéoprojecteur : `S`, la fenêtre orateur sur votre écran, la principale sur
+> le projecteur. En répétition, ou sur un seul écran : `V`.
 
 ## Minutage — 12 slides, aligné sur la grille
 
